@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CEO
+  CTO
+  DIRECTOR
+  SENIOR_MANAGER
+  MANAGER
+  TEAM_LEAD
+  SENIOR_EMPLOYEE
+  JUNIOR_EMPLOYEE
+  INTERN
+}
+
+enum UserRole {
+  ADMIN
+  VIEWER
+}
+
+model Employee {
+  id             Int       @id @default(autoincrement())
+  employeeNumber String    @unique
+  name           String
+  surname        String
+  birthDate      DateTime
+  salary         Decimal   @db.Decimal(10, 2)
+  role           Role
+  email          String?   @unique
+  phoneNumber    String?
+  department     String?
+  profileUrl     String?   // For future image uploads
+  
+  // Hierarchy relationships
+  managerId      Int?
+  manager        Employee? @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  subordinates   Employee[] @relation("EmployeeManager")
+  
+  // User relationship (if employee has login access)
+  user           User?     @relation(fields: [userId], references: [id])
+  userId         String?   @unique  // Add @unique here
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Indexes for search performance
+  @@index([name])
+  @@index([surname])
+  @@index([employeeNumber])
+  @@index([role])
+  @@index([department])
+  @@map("employees")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(ADMIN)
+  
+  // Relationship to employee (if user is also an employee)
+  employee  Employee?
+  
+  // Password reset functionality
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
