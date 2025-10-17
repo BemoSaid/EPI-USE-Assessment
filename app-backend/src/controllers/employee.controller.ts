@@ -11,7 +11,6 @@ import fetch from "node-fetch";
 
 export class EmployeeController {
   constructor() {
-    // Bind all methods to preserve 'this' context
     this.getAllEmployees = this.getAllEmployees.bind(this);
     this.getEmployeeById = this.getEmployeeById.bind(this);
     this.createEmployee = this.createEmployee.bind(this);
@@ -21,7 +20,7 @@ export class EmployeeController {
     this.getDepartments = this.getDepartments.bind(this);
     this.getPotentialManagers = this.getPotentialManagers.bind(this);
   }
-  // Helper function for Gravatar URLs
+  // Gravatar URLs
   // private getGravatarUrl(email: string, size: number = 200): string {
   //     if (!email) return '';
   //     const hash = crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
