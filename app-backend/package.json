@@ -1,13 +1,21 @@
 {
+  "name": "employee-hierarchy-api",
+  "version": "1.0.0",
   "type": "module",
+  "main": "dist/app.js",
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
+    "railway:build": "npm install && npm run build && npm run db:generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
+  },
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
   },
   "dependencies": {
     "@prisma/client": "^6.17.1",
