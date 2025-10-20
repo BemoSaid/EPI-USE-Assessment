@@ -1,23 +1,23 @@
-import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { CreateUserDto, LoginDto } from '../types/index.js';
-import prisma from '../config/database.js';
+import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { CreateUserDto, LoginDto, AuthenticatedRequest } from "../types/index.js";
+import prisma from "../config/database.js";
 
 export class AuthController {
   async register(req: Request, res: Response) {
     try {
-      const { email, password, name, role = 'ADMIN' }: CreateUserDto = req.body;
+      const { email, password, name, role = "ADMIN" }: CreateUserDto = req.body;
 
       if (!email || !password || !name) {
-        return res.status(400).json({ 
-          error: 'Email, password, and name are required' 
+        return res.status(400).json({
+          error: "Email, password, and name are required",
         });
       }
 
       if (password.length < 6) {
-        return res.status(400).json({ 
-          error: 'Password must be at least 6 characters long' 
+        return res.status(400).json({
+          error: "Password must be at least 6 characters long",
         });
       }
 
@@ -27,7 +27,7 @@ export class AuthController {
       });
 
       if (existingUser) {
-        return res.status(400).json({ error: 'User already exists' });
+        return res.status(400).json({ error: "User already exists" });
       }
 
       // Hash password
@@ -47,7 +47,7 @@ export class AuthController {
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET!,
-        { expiresIn: '24h' }
+        { expiresIn: "24h" }
       );
 
       res.status(201).json({
@@ -60,8 +60,8 @@ export class AuthController {
         },
       });
     } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ error: 'Failed to register user' });
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Failed to register user" });
     }
   }
 
@@ -70,8 +70,8 @@ export class AuthController {
       const { email, password }: LoginDto = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({ 
-          error: 'Email and password are required' 
+        return res.status(400).json({
+          error: "Email and password are required",
         });
       }
 
@@ -81,20 +81,20 @@ export class AuthController {
       });
 
       if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: "Invalid credentials" });
       }
 
       const isValidPassword = await bcrypt.compare(password, user.password);
 
       if (!isValidPassword) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: "Invalid credentials" });
       }
 
       // Generate JWT
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET!,
-        { expiresIn: '24h' }
+        { expiresIn: "24h" }
       );
 
       res.json({
@@ -107,8 +107,8 @@ export class AuthController {
         },
       });
     } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ error: 'Failed to login' });
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Failed to login" });
     }
   }
 
@@ -126,13 +126,73 @@ export class AuthController {
       });
 
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ error: "User not found" });
       }
 
       res.json(user);
     } catch (error) {
-      console.error('Get user error:', error);
-      res.status(500).json({ error: 'Failed to get user info' });
+      console.error("Get user error:", error);
+      res.status(500).json({ error: "Failed to get user info" });
+    }
+  }
+  async createUser(req: AuthenticatedRequest, res: Response) {
+    try {
+      const {
+        email,
+        password,
+        name,
+        role = "VIEWER",
+      }: CreateUserDto = req.body;
+
+      if (!email || !password || !name) {
+        return res.status(400).json({
+          error: "Email, password, and name are required",
+        });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({
+          error: "Password must be at least 6 characters long",
+        });
+      }
+
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser) {
+        return res
+          .status(400)
+          .json({ error: "User with this email already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Create user
+      const user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          role,
+        },
+      });
+
+      res.status(201).json({
+        message: "User created successfully",
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          createdAt: user.createdAt,
+        },
+      });
+    } catch (error) {
+      console.error("Create user error:", error);
+      res.status(500).json({ error: "Failed to create user" });
     }
   }
 }
