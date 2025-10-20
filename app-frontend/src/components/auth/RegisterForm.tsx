@@ -4,6 +4,7 @@ import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../context/ToastContext';
 import { USER_ROLES } from '../../utils/constants';
 
 interface RegisterFormProps {
@@ -11,7 +12,8 @@ interface RegisterFormProps {
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
-  const { register, isLoading } = useAuth();
+  const { register } = useAuth();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -22,6 +24,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -70,9 +73,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // First validate form locally - no loading state yet
     if (!validateForm()) {
+      showToast('Please fill in all required fields correctly.', 'warning');
       return;
     }
+
+    // Only start loading after validation passes
+    setIsSubmitting(true);
 
     try {
       await register({
@@ -81,25 +89,31 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
         password: formData.password,
         role: formData.role
       });
+      showToast('Account created successfully!', 'success');
     } catch (error: any) {
       console.error('Registration failed:', error);
       
       if (error.response?.status === 400) {
         const message = error.response?.data?.message || 'Registration failed';
         if (message.includes('email')) {
+          showToast('Email already exists. Please use a different email.', 'error');
           setErrors({ 
             email: 'Email already exists' 
           });
         } else {
+          showToast(message, 'error');
           setErrors({ 
             general: message 
           });
         }
       } else {
+        showToast('Registration failed. Please try again.', 'error');
         setErrors({ 
           general: 'Registration failed. Please try again.' 
         });
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -120,7 +134,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
           onChange={handleChange}
           error={errors.name}
           placeholder="Enter your full name"
-          disabled={isLoading}
+          disabled={isSubmitting}
           autoComplete="name"
         />
 
@@ -132,7 +146,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
           onChange={handleChange}
           error={errors.email}
           placeholder="Enter your email"
-          disabled={isLoading}
+          disabled={isSubmitting}
           autoComplete="email"
         />
 
@@ -145,7 +159,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
             onChange={handleChange}
             error={errors.password}
             placeholder="Enter your password"
-            disabled={isLoading}
+            disabled={isSubmitting}
             autoComplete="new-password"
             helperText="Must be at least 6 characters"
           />
@@ -172,7 +186,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
             onChange={handleChange}
             error={errors.confirmPassword}
             placeholder="Confirm your password"
-            disabled={isLoading}
+            disabled={isSubmitting}
             autoComplete="new-password"
           />
           <button
@@ -197,7 +211,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
             name="role"
             value={formData.role}
             onChange={handleChange}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="block w-full px-4 py-3 border-2 border-[#B2D8D8] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5F9EA0] focus:border-[#5F9EA0] bg-white text-[#3A6F6F] transition-all duration-200"
           >
             <option value={USER_ROLES.VIEWER}>Viewer (Read-only access)</option>
@@ -209,12 +223,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       <Button
         type="submit"
         fullWidth
-        isLoading={isLoading}
-        disabled={isLoading}
+        isLoading={isSubmitting}
+        disabled={isSubmitting}
         className="flex items-center justify-center gap-2 mt-8"
       >
         <UserPlus className="h-4 w-4" />
-        {isLoading ? 'Creating Account...' : 'Create Account'}
+        {isSubmitting ? 'Creating Account...' : 'Create Account'}
       </Button>
 
       {onToggleMode && (

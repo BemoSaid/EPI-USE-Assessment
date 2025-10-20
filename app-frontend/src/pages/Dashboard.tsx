@@ -17,15 +17,7 @@ import {
 } from "lucide-react";
 
 export const Dashboard: React.FC = () => {
-  const { user, isAuthenticated, isAdmin, logout, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;

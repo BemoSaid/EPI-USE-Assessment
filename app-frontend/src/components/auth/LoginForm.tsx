@@ -4,19 +4,22 @@ import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../context/ToastContext';
 
 interface LoginFormProps {
   onToggleMode?: () => void;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
-  const { login, isLoading } = useAuth();
+  const { login } = useAuth(); // Remove isLoading from here
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add local loading state
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -55,38 +58,44 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // First validate form locally - no loading state yet
     if (!validateForm()) {
+      showToast('Please fill in all required fields correctly.', 'warning');
       return;
     }
 
+    // Only start loading after validation passes
+    setIsSubmitting(true);
+
     try {
       await login(formData.email, formData.password);
+      showToast('Successfully logged in!', 'success');
     } catch (error: any) {
       console.error('Login failed:', error);
       
       if (error.response?.status === 401) {
+        showToast('Invalid email or password. Please check your credentials.', 'error');
         setErrors({ 
           general: 'Invalid email or password' 
         });
       } else if (error.response?.status === 404) {
+        showToast('User account not found.', 'error');
         setErrors({ 
           general: 'User not found' 
         });
       } else {
+        showToast('Login failed. Please try again.', 'error');
         setErrors({ 
           general: 'Login failed. Please try again.' 
         });
       }
+    } finally {
+      setIsSubmitting(false); // Always stop loading
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {errors.general && (
-        <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {errors.general}
-        </div>
-      )}
 
       <div className="space-y-4">
         <Input
@@ -97,7 +106,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
           onChange={handleChange}
           error={errors.email}
           placeholder="Enter your email"
-          disabled={isLoading}
+          disabled={isSubmitting}
           autoComplete="email"
         />
 
@@ -110,7 +119,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
             onChange={handleChange}
             error={errors.password}
             placeholder="Enter your password"
-            disabled={isLoading}
+            disabled={isSubmitting}
             autoComplete="current-password"
           />
           <button
@@ -131,12 +140,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
       <Button
         type="submit"
         fullWidth
-        isLoading={isLoading}
-        disabled={isLoading}
+        isLoading={isSubmitting}
+        disabled={isSubmitting}
         className="flex items-center justify-center gap-2 mt-8"
       >
         <LogIn className="h-4 w-4" />
-        {isLoading ? 'Signing in...' : 'Sign In'}
+        {isSubmitting ? 'Signing in...' : 'Sign In'}
       </Button>
 
       {onToggleMode && (

@@ -6,16 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 
 export const Register: React.FC = () => {
-  const { isAuthenticated, isAdmin, isLoading } = useAuth();
-
-  // Show loading spinner while checking auth state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  const { isAuthenticated, isAdmin } = useAuth();
 
   // Redirect if not authenticated
   if (!isAuthenticated) {

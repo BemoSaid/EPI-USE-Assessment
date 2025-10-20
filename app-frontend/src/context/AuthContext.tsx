@@ -60,7 +60,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
       const response = await authAPI.login({ email, password });
       
       // Store auth data
@@ -72,14 +71,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Login error:', error);
       throw error; 
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const register = async (userData: RegisterRequest) => {
     try {
-      setIsLoading(true);
       const response = await authAPI.register(userData);
       
       // Store auth data
@@ -90,8 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(response.user);
     } catch (error) {
       console.error('Registration error:', error);
-      throw error;     } finally {
-      setIsLoading(false);
+      throw error;
     }
   };
 
