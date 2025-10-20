@@ -1,3 +1,4 @@
+// src/components/ui/LoadingSpinner.tsx
 import React from 'react';
 
 interface LoadingSpinnerProps {
@@ -17,7 +18,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
   return (
     <div className={`${sizeClasses[size]} ${className}`}>
-      <div className="animate-spin rounded-full border-2 border-gray-300 border-t-primary-600 h-full w-full"></div>
+      <div className="animate-spin rounded-full border-2 border-[#B2D8D8] border-t-[#5F9EA0] h-full w-full"></div>
     </div>
   );
 };

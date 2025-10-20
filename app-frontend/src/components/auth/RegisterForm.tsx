@@ -1,3 +1,4 @@
+// src/components/auth/RegisterForm.tsx
 import React, { useState } from 'react';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -80,11 +81,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
         password: formData.password,
         role: formData.role
       });
-      // Navigation will be handled by App.tsx based on auth state
     } catch (error: any) {
       console.error('Registration failed:', error);
       
-      // Handle specific error messages from backend
       if (error.response?.status === 400) {
         const message = error.response?.data?.message || 'Registration failed';
         if (message.includes('email')) {
@@ -107,7 +106,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {errors.general && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+        <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {errors.general}
         </div>
       )}
@@ -152,7 +151,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
           />
           <button
             type="button"
-            className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-8 text-[#5F9EA0] hover:text-[#3A6F6F] transition-colors"
             onClick={() => setShowPassword(!showPassword)}
             tabIndex={-1}
           >
@@ -178,7 +177,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
           />
           <button
             type="button"
-            className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-8 text-[#5F9EA0] hover:text-[#3A6F6F] transition-colors"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             tabIndex={-1}
           >
@@ -191,7 +190,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-[#3A6F6F] mb-1">
             Role
           </label>
           <select
@@ -199,7 +198,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
             value={formData.role}
             onChange={handleChange}
             disabled={isLoading}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="block w-full px-4 py-3 border-2 border-[#B2D8D8] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5F9EA0] focus:border-[#5F9EA0] bg-white text-[#3A6F6F] transition-all duration-200"
           >
             <option value={USER_ROLES.VIEWER}>Viewer (Read-only access)</option>
             <option value={USER_ROLES.ADMIN}>Admin (Full access)</option>
@@ -212,20 +211,20 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
         fullWidth
         isLoading={isLoading}
         disabled={isLoading}
-        className="flex items-center justify-center gap-2"
+        className="flex items-center justify-center gap-2 mt-8"
       >
         <UserPlus className="h-4 w-4" />
         {isLoading ? 'Creating Account...' : 'Create Account'}
       </Button>
 
       {onToggleMode && (
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
+        <div className="text-center mt-6">
+          <p className="text-sm text-[#5F9EA0]">
             Already have an account?{' '}
             <button
               type="button"
               onClick={onToggleMode}
-              className="font-medium text-primary-600 hover:text-primary-500 focus:outline-none focus:underline"
+              className="font-medium text-[#3A6F6F] hover:text-[#5F9EA0] focus:outline-none focus:underline transition-colors"
             >
               Sign in
             </button>

@@ -1,3 +1,4 @@
+// src/components/auth/LoginForm.tsx
 import React, { useState } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -82,7 +83,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {errors.general && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+        <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {errors.general}
         </div>
       )}
@@ -114,7 +115,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
           />
           <button
             type="button"
-            className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-8 text-[#5F9EA0] hover:text-[#3A6F6F] transition-colors"
             onClick={() => setShowPassword(!showPassword)}
             tabIndex={-1}
           >
@@ -132,20 +133,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
         fullWidth
         isLoading={isLoading}
         disabled={isLoading}
-        className="flex items-center justify-center gap-2"
+        className="flex items-center justify-center gap-2 mt-8"
       >
         <LogIn className="h-4 w-4" />
         {isLoading ? 'Signing in...' : 'Sign In'}
       </Button>
 
       {onToggleMode && (
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
+        <div className="text-center mt-6">
+          <p className="text-sm text-[#5F9EA0]">
             Don't have an account?{' '}
             <button
               type="button"
               onClick={onToggleMode}
-              className="font-medium text-primary-600 hover:text-primary-500 focus:outline-none focus:underline"
+              className="font-medium text-[#3A6F6F] hover:text-[#5F9EA0] focus:outline-none focus:underline transition-colors"
             >
               Contact your administrator
             </button>
