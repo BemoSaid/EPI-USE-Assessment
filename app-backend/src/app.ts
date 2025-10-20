@@ -44,6 +44,9 @@ app.get('/api', (req, res) => {
       auth: {
         register: 'POST /api/auth/register',
         login: 'POST /api/auth/login',
+        me: 'GET /api/auth/me',
+        createUser: 'POST /api/auth/create-user',
+
       },
       employees: {
         list: 'GET /api/employees',

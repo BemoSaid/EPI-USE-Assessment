@@ -1,6 +1,6 @@
 // src/pages/Dashboard.tsx
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { Card } from "../components/ui/Card";
@@ -18,6 +18,7 @@ import {
 
 export const Dashboard: React.FC = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
@@ -140,7 +141,7 @@ export const Dashboard: React.FC = () => {
                   </p>
                   <Button
                     size="sm"
-                    onClick={() => (window.location.href = "/register")}
+                    onClick={() => navigate("/create-user")} 
                   >
                     Add User
                   </Button>

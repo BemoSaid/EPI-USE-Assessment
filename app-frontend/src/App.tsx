@@ -7,6 +7,7 @@ import { ToastProvider } from './context/ToastContext';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
+import { CreateUser } from './pages/CreateUser';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -34,6 +35,7 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               
               <Route path="*" element={<Navigate to="/login" replace />} />
+              <Route path="/create-user" element={<CreateUser />} />
             </Routes>
           </Router>
         </AuthProvider>
