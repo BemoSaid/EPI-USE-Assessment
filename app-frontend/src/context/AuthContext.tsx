@@ -95,6 +95,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem(USER_DATA_KEY);
     setToken(null);
     setUser(null);
+    
+    window.location.href = '/login';
   };
 
   const value: AuthContextType = {

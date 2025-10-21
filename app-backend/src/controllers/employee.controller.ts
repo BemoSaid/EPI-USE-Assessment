@@ -8,8 +8,69 @@ import { Role } from "@prisma/client";
 import prisma from "../config/database.js";
 import crypto from "crypto";
 import fetch from "node-fetch";
+import bcrypt from "bcryptjs";
 
 export class EmployeeController {
+  // Role hierarchy - lower numbers = higher authority
+  private roleHierarchy = {
+    CEO: 1,
+    CTO: 2,
+    DIRECTOR: 3,
+    SENIOR_MANAGER: 4,
+    MANAGER: 5,
+    TEAM_LEAD: 6,
+    SENIOR_EMPLOYEE: 7,
+    JUNIOR_EMPLOYEE: 8,
+    INTERN: 9,
+  } as const;
+
+  // Helper function to map employee roles to user roles
+  private mapEmployeeRoleToUserRole(employeeRole: Role): "ADMIN" | "VIEWER" {
+    const adminRoles: Role[] = ["CEO", "CTO", "DIRECTOR", "SENIOR_MANAGER", "MANAGER"];
+    return adminRoles.includes(employeeRole) ? "ADMIN" : "VIEWER";
+  }
+
+  // Helper function to generate default password
+  private generateDefaultPassword(employeeNumber: string, surname: string): string {
+    // Format: FirstThreeLettersOfSurname + EmployeeNumber + "!"
+    const surnamePrefix = surname.substring(0, 3).toLowerCase();
+    return `${surnamePrefix}${employeeNumber}!`;
+  }
+
+  // Helper function to check if user can create employee with specific role
+  private async canCreateEmployeeRole(creatorUserId: string, targetRole: Role): Promise<boolean> {
+    // Get the creator's employee record to check their role
+    const creatorEmployee = await prisma.employee.findFirst({
+      where: { userId: creatorUserId },
+      select: { role: true }
+    });
+
+    if (!creatorEmployee) {
+      // If creator is not an employee (pure admin user), allow all except CEO
+      return targetRole !== "CEO";
+    }
+
+    const creatorRank = this.roleHierarchy[creatorEmployee.role];
+    const targetRank = this.roleHierarchy[targetRole];
+
+    // Creator can only create roles with higher rank numbers (lower authority)
+    return targetRank > creatorRank;
+  }
+
+  // Helper function to check if someone can be a manager for a specific role
+  private canBeManager(managerRole: Role, subordinateRole: Role): boolean {
+    const managerRank = this.roleHierarchy[managerRole];
+    const subordinateRank = this.roleHierarchy[subordinateRole];
+
+    // Manager must have lower rank number (higher authority) than subordinate
+    return managerRank < subordinateRank;
+  }
+
+  // Helper function to determine if role should have no manager (top executives)
+  private shouldHaveNoManager(role: Role): boolean {
+    return role === "CEO"; // Only CEO has no manager by default
+  }
+
   constructor() {
     this.getAllEmployees = this.getAllEmployees.bind(this);
     this.getEmployeeById = this.getEmployeeById.bind(this);
@@ -20,6 +81,8 @@ export class EmployeeController {
     this.getDepartments = this.getDepartments.bind(this);
     this.getPotentialManagers = this.getPotentialManagers.bind(this);
     this.getDashboardStats = this.getDashboardStats.bind(this);
+    this.getAvailableEmployees = this.getAvailableEmployees.bind(this);
+    this.getAvailableRoles = this.getAvailableRoles.bind(this);
   }
   // Gravatar URLs
   // private getGravatarUrl(email: string, size: number = 200): string {
@@ -237,6 +300,14 @@ export class EmployeeController {
         });
       }
 
+      // Check hierarchical role creation permissions
+      const canCreate = await this.canCreateEmployeeRole(req.user!.id, employeeData.role);
+      if (!canCreate) {
+        return res.status(403).json({
+          error: "You don't have permission to create an employee with this role",
+        });
+      }
+
       // Validate that employee is not their own manager
       if (
         employeeData.managerId &&
@@ -245,6 +316,11 @@ export class EmployeeController {
         return res
           .status(400)
           .json({ error: "Employee cannot be their own manager" });
+      }
+
+      // Auto-handle CEO role - CEOs cannot have managers
+      if (this.shouldHaveNoManager(employeeData.role)) {
+        delete employeeData.managerId;
       }
 
       // Check if employee number already exists
@@ -277,22 +353,56 @@ export class EmployeeController {
         if (!manager) {
           return res.status(400).json({ error: "Manager not found" });
         }
-      }
 
-      if (employeeData.userId) {
-        const user = await prisma.user.findUnique({
-          where: { id: employeeData.userId },
-        });
-
-        if (!user) {
-          return res.status(400).json({ error: "User not found" });
+        // Validate hierarchical manager relationship
+        if (!this.canBeManager(manager.role, employeeData.role)) {
+          return res.status(400).json({
+            error: `A ${manager.role} cannot manage a ${employeeData.role}. Please select an appropriate manager.`,
+          });
         }
       }
 
+
+
+      // Automatically create user account for the employee
+      let user = null;
+      if (employeeData.email) {
+        // Check if user with this email already exists
+        const existingUser = await prisma.user.findUnique({
+          where: { email: employeeData.email },
+        });
+
+        if (existingUser) {
+          return res.status(400).json({ 
+            error: "A user account with this email already exists" 
+          });
+        }
+
+        // Generate default password and determine user role
+        const defaultPassword = this.generateDefaultPassword(
+          employeeData.employeeNumber, 
+          employeeData.surname
+        );
+        const userRole = this.mapEmployeeRoleToUserRole(employeeData.role);
+        const hashedPassword = await bcrypt.hash(defaultPassword, 12);
+
+        // Create user first
+        user = await prisma.user.create({
+          data: {
+            email: employeeData.email,
+            password: hashedPassword,
+            name: `${employeeData.name} ${employeeData.surname}`,
+            role: userRole,
+          },
+        });
+      }
+
+      // Create employee and link to user if user was created
       const employee = await prisma.employee.create({
         data: {
           ...employeeData,
           birthDate: new Date(employeeData.birthDate),
+          userId: user?.id || null,
         },
         include: {
           manager: {
@@ -317,10 +427,26 @@ export class EmployeeController {
 
       // Add Gravatar URL only if it exists
       const gravatarUrl = await this.getGravatarUrl(employee.email || "");
-      const employeeResponse = {
+      
+      // Prepare response with user credentials if a user was created
+      const employeeResponse: any = {
         ...employee,
-        ...(gravatarUrl && { gravatarUrl }), // Only add if exists
+        ...(gravatarUrl && { gravatarUrl }), 
       };
+
+      if (user) {
+        const defaultPassword = this.generateDefaultPassword(
+          employeeData.employeeNumber, 
+          employeeData.surname
+        );
+        
+        employeeResponse.userCredentials = {
+          email: user.email,
+          temporaryPassword: defaultPassword,
+          role: user.role,
+          message: "User account created automatically. Please share these credentials with the employee and ask them to change the password on first login."
+        };
+      }
 
       res.status(201).json(employeeResponse);
     } catch (error) {
@@ -420,7 +546,6 @@ export class EmployeeController {
     try {
       const id = parseInt(req.params.id!);
 
-      // Check if employee exists
       const existingEmployee = await prisma.employee.findUnique({
         where: { id },
         include: {
@@ -458,7 +583,6 @@ export class EmployeeController {
     }
   }
 
-  // Recursively get hierarchy tree
   async getHierarchy(req: AuthenticatedRequest, res: Response) {
     try {
       const buildHierarchy = async (
@@ -565,6 +689,8 @@ export class EmployeeController {
     }
   }
 
+
+
   // Get dashboard statistics
   async getDashboardStats(req: AuthenticatedRequest, res: Response) {
     try {
@@ -647,6 +773,75 @@ export class EmployeeController {
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
       res.status(500).json({ error: "Failed to fetch dashboard statistics" });
+    }
+  }
+
+  // Get roles that the current user can create
+  async getAvailableRoles(req: AuthenticatedRequest, res: Response) {
+    try {
+      const creatorEmployee = await prisma.employee.findFirst({
+        where: { userId: req.user!.id },
+        select: { role: true }
+      });
+
+      let availableRoles: Role[] = [];
+
+      if (!creatorEmployee) {
+        availableRoles = Object.keys(this.roleHierarchy)
+          .filter(role => role !== "CEO") as Role[];
+      } else {
+        const creatorRank = this.roleHierarchy[creatorEmployee.role];
+        availableRoles = Object.entries(this.roleHierarchy)
+          .filter(([_, rank]) => rank > creatorRank)
+          .map(([role, _]) => role) as Role[];
+      }
+
+      availableRoles.sort((a, b) => this.roleHierarchy[a as Role] - this.roleHierarchy[b as Role]);
+
+      res.json(availableRoles);
+    } catch (error) {
+      console.error("Error fetching available roles:", error);
+      res.status(500).json({ error: "Failed to fetch available roles" });
+    }
+  }
+
+  async getAvailableEmployees(req: AuthenticatedRequest, res: Response) {
+    try {
+      const allEmployees = await prisma.employee.findMany({
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          employeeNumber: true,
+          role: true,
+          department: true,
+        },
+        orderBy: [
+          { name: "asc" },
+          { surname: "asc" }
+        ],
+      });
+
+      const linkedEmployeeIds = new Set();
+      const employeesWithUsers = await prisma.employee.findMany({
+        where: {
+          userId: {
+            not: null
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      employeesWithUsers.forEach(emp => linkedEmployeeIds.add(emp.id));
+      
+      const availableEmployees = allEmployees.filter(emp => !linkedEmployeeIds.has(emp.id));
+
+      res.json(availableEmployees);
+    } catch (error) {
+      console.error("Error fetching available employees:", error);
+      res.status(500).json({ error: "Failed to fetch available employees" });
     }
   }
 }

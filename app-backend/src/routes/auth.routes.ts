@@ -8,6 +8,7 @@ const authController = new AuthController();
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/me', authenticateToken, authController.me);
-router.post('/create-user', authenticateToken, requireAdmin, authController.createUser); 
+router.post('/create-user', authenticateToken, requireAdmin, authController.createUser);
+router.put('/link-employee', authenticateToken, requireAdmin, authController.linkUserToEmployee);
 
 export default router;

@@ -149,7 +149,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </Card>
 
-          {/* Admin Only: Create User */}
+          {/* Admin Only: Create Employee */}
           {isAdmin && (
             <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-[#5F9EA0]">
               <div className="flex items-start gap-4">
@@ -158,16 +158,16 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-[#3A6F6F] mb-1">
-                    Create New User
+                    Add New Employee
                   </h3>
                   <p className="text-sm text-[#5F9EA0] mb-3">
-                    Add new users to the employee management system
+                    Create employee records with automatic user accounts
                   </p>
                   <Button
                     size="sm"
-                    onClick={() => navigate("/create-user")} 
+                    onClick={() => navigate("/create-employee")} 
                   >
-                    Add User
+                    Add Employee
                   </Button>
                 </div>
               </div>

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, UserPlus, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, ArrowLeft, Users } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useToast } from '../../context/ToastContext';
-import { userService } from '../../services/userService';
+import { userService, EmployeeOption } from '../../services/userService';
 import { USER_ROLES } from '../../utils/constants';
 
 export const CreateUserForm: React.FC = () => {
@@ -17,12 +18,33 @@ export const CreateUserForm: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'VIEWER' as 'ADMIN' | 'VIEWER'
+    role: 'VIEWER' as 'ADMIN' | 'VIEWER',
+    employeeId: ''
   });
+  
+  const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Fetch available employees on component mount
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const employees = await userService.getAvailableEmployees();
+        setAvailableEmployees(employees);
+      } catch (error) {
+        console.error('Failed to fetch employees:', error);
+        showToast('Failed to load available employees', 'error');
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, [showToast]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -79,12 +101,15 @@ export const CreateUserForm: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await userService.createUser({
+      const userData = {
         name: formData.name.trim(),
         email: formData.email,
         password: formData.password,
-        role: formData.role
-      });
+        role: formData.role,
+        ...(formData.employeeId && { employeeId: parseInt(formData.employeeId) })
+      };
+
+      const response = await userService.createUser(userData);
 
       showToast(
         `User "${response.user.name}" created successfully! They can now login with their email and password.`,
@@ -217,6 +242,47 @@ export const CreateUserForm: React.FC = () => {
               : 'Can only view employee information'
             }
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-[#3A6F6F] mb-1">
+            Link to Employee (Optional)
+          </label>
+          {loadingEmployees ? (
+            <div className="flex items-center gap-2 p-3 border-2 border-[#B2D8D8] rounded-lg bg-[#F0F9F9]">
+              <LoadingSpinner />
+              <span className="text-sm text-[#5F9EA0]">Loading employees...</span>
+            </div>
+          ) : (
+            <select
+              name="employeeId"
+              value={formData.employeeId}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              className="block w-full px-4 py-3 border-2 border-[#B2D8D8] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5F9EA0] focus:border-[#5F9EA0] bg-white text-[#3A6F6F] transition-all duration-200"
+            >
+              <option value="">No employee link (System user only)</option>
+              {availableEmployees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.employeeNumber} - {employee.name} {employee.surname} ({employee.role})
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="text-sm text-[#5F9EA0] mt-1">
+            <Users className="h-4 w-4 inline mr-1" />
+            {formData.employeeId 
+              ? 'This user will be linked to the selected employee record'
+              : 'User will have system access only. You can link to an employee later or create employees first.'
+            }
+          </p>
+          {availableEmployees.length === 0 && !loadingEmployees && (
+            <div className="mt-2 p-3 bg-[#FFF8DC] border border-[#DDD6AA] rounded-lg">
+              <p className="text-sm text-[#8B7355]">
+                💡 <strong>No employees available:</strong> Create employees first through the employee management system, then return here to link users to employee records.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

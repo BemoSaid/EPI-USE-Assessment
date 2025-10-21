@@ -23,7 +23,6 @@ export interface CreateEmployeeDto {
   department?: string;
   profileUrl?: string;
   managerId?: number;
-  userId?: string;
 }
 
 export interface UpdateEmployeeDto extends Partial<CreateEmployeeDto> {}
@@ -41,6 +40,7 @@ export interface CreateUserDto {
   password: string;
   name: string;
   role?: UserRole;
+  employeeId?: number;
 }
 
 export interface LoginDto {
