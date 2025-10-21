@@ -43,4 +43,5 @@ export interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  setUser: (user: User | null) => void;
 }

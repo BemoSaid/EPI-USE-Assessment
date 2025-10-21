@@ -9,6 +9,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 import { userService } from '../services/userService';
 import { gravatarService, GravatarProfile } from '../services/gravatarService';
+import { useAuthContext } from '../context/AuthContext';
+import { authAPI } from '../services/api';
 
 interface PasswordChangeData {
   currentPassword: string;
@@ -25,6 +27,8 @@ export const AccountSettings: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { showToast } = useToast();
+  // Add setUser from AuthContext
+  const { setUser } = useAuthContext();
   
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
@@ -131,8 +135,15 @@ export const AccountSettings: React.FC = () => {
   };
 
   // Handle profile photo updates
-  const handlePhotoUpdate = (photoUrl: string | null) => {
+  const handlePhotoUpdate = async (photoUrl: string | null) => {
     setCurrentProfilePhoto(photoUrl);
+    try {
+      const latestUser = await authAPI.getCurrentUser();
+      setUser(latestUser);
+      localStorage.setItem('user_data', JSON.stringify(latestUser));
+    } catch (err) {
+      console.error('Failed to refresh user after photo update:', err);
+    }
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {

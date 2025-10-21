@@ -108,6 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     isAuthenticated: !!token && !!user,
     isAdmin: user?.role === 'ADMIN',
+    setUser, 
   };
 
   return (
