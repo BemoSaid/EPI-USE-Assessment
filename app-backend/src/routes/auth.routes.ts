@@ -8,6 +8,10 @@ const authController = new AuthController();
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/me', authenticateToken, authController.me);
+router.put('/change-password', authenticateToken, authController.changePassword);
+router.put('/profile', authenticateToken, authController.updateProfile);
+router.put('/profile-photo', authenticateToken, authController.updateProfilePhoto);
+router.delete('/profile-photo', authenticateToken, authController.removeProfilePhoto);
 router.post('/create-user', authenticateToken, requireAdmin, authController.createUser);
 router.put('/link-employee', authenticateToken, requireAdmin, authController.linkUserToEmployee);
 

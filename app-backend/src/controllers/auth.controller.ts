@@ -5,6 +5,18 @@ import { CreateUserDto, LoginDto, AuthenticatedRequest } from "../types/index.js
 import prisma from "../config/database.js";
 
 export class AuthController {
+  constructor() {
+    this.register = this.register.bind(this);
+    this.login = this.login.bind(this);
+    this.me = this.me.bind(this);
+    this.createUser = this.createUser.bind(this);
+    this.linkUserToEmployee = this.linkUserToEmployee.bind(this);
+    this.changePassword = this.changePassword.bind(this);
+    this.updateProfile = this.updateProfile.bind(this);
+    this.updateProfilePhoto = this.updateProfilePhoto.bind(this);
+    this.removeProfilePhoto = this.removeProfilePhoto.bind(this);
+  }
+
   async register(req: Request, res: Response) {
     try {
       const { email, password, name, role = "ADMIN" }: CreateUserDto = req.body;
@@ -137,6 +149,7 @@ export class AuthController {
           name: true,
           surname: true,
           department: true,
+          profileUrl: true,
         },
       });
 
@@ -147,6 +160,7 @@ export class AuthController {
           name: employee.name,
           surname: employee.surname,
           department: employee.department,
+          profileUrl: employee.profileUrl,
         } : null,
       };
 
@@ -348,6 +362,198 @@ export class AuthController {
     } catch (error) {
       console.error("Link user to employee error:", error);
       res.status(500).json({ error: "Failed to link user to employee" });
+    }
+  }
+
+  async changePassword(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Current password and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "New password must be at least 6 characters long" });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: {
+          id: true,
+          email: true,
+          password: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ error: "Current password is incorrect" });
+      }
+
+      const isSamePassword = await bcrypt.compare(newPassword, user.password);
+      if (isSamePassword) {
+        return res.status(400).json({ error: "New password must be different from current password" });
+      }
+
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedNewPassword },
+      });
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  }
+
+  async updateProfile(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { name, email } = req.body;
+
+      if (!name?.trim() || !email?.trim()) {
+        return res.status(400).json({ error: "Name and email are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      // Check if email is already taken by another user
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          id: { not: req.user!.id },
+        },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ error: "Email is already taken" });
+      }
+
+      // Update user profile
+      const updatedUser = await prisma.user.update({
+        where: { id: req.user!.id },
+        data: {
+          name: name.trim(),
+          email: email.toLowerCase(),
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+
+      const employee = await prisma.employee.findFirst({
+        where: { userId: updatedUser.id },
+        select: {
+          role: true,
+          name: true,
+          surname: true,
+          department: true,
+        },
+      });
+
+      const responseUser = {
+        ...updatedUser,
+        employee: employee ? {
+          role: employee.role,
+          name: employee.name,
+          surname: employee.surname,
+          department: employee.department,
+        } : null,
+      };
+
+      res.json({ 
+        message: "Profile updated successfully",
+        user: responseUser
+      });
+    } catch (error) {
+      console.error("Update profile error:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  }
+
+  async updateProfilePhoto(req: AuthenticatedRequest, res: Response) {
+    console.log('updateProfilePhoto endpoint called!', req.body);
+    try {
+      const { profileUrl } = req.body;
+
+      if (!profileUrl || typeof profileUrl !== 'string') {
+        return res.status(400).json({ error: "Profile URL is required" });
+      }
+
+      // Validate URL format (basic check)
+      try {
+        new URL(profileUrl);
+      } catch {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Try to find the user's employee record first
+      const employee = await prisma.employee.findFirst({
+        where: { userId: req.user!.id },
+      });
+
+      if (employee) {
+        // If user has employee record, update employee profileUrl
+        await prisma.employee.update({
+          where: { id: employee.id },
+          data: { profileUrl },
+        });
+      } else {
+        // If no employee record, we could add profileUrl to User table in the future
+        // For now, let's just accept the upload but not store it in database
+        console.log('User has no employee record, photo uploaded to Supabase but not stored in DB');
+      }
+
+      res.json({ 
+        message: "Profile photo updated successfully",
+        profileUrl: profileUrl
+      });
+    } catch (error) {
+      console.error("Update profile photo error:", error);
+      res.status(500).json({ error: "Failed to update profile photo" });
+    }
+  }
+
+  async removeProfilePhoto(req: AuthenticatedRequest, res: Response) {
+    try {
+      // Try to find the user's employee record first
+      const employee = await prisma.employee.findFirst({
+        where: { userId: req.user!.id },
+      });
+
+      if (employee) {
+        // If user has employee record, remove employee profileUrl
+        await prisma.employee.update({
+          where: { id: employee.id },
+          data: { profileUrl: null },
+        });
+      } else {
+        // If no employee record, just return success
+        // The frontend will handle removing it from the UI
+        console.log('User has no employee record, photo removal handled on frontend only');
+      }
+
+      res.json({ 
+        message: "Profile photo removed successfully"
+      });
+    } catch (error) {
+      console.error("Remove profile photo error:", error);
+      res.status(500).json({ error: "Failed to remove profile photo" });
     }
   }
 }

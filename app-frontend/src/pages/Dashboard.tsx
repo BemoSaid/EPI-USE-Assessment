@@ -282,19 +282,18 @@ export const Dashboard: React.FC = () => {
                 </div>
               )}
 
-              {isAdmin && (
-                <div className="pt-3 border-t border-[#B2D8D8]">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    fullWidth
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Account Settings
-                  </Button>
-                </div>
-              )}
+              <div className="pt-3 border-t border-[#B2D8D8]">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  fullWidth
+                  onClick={() => navigate('/account-settings')}
+                  className="flex items-center justify-center gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Account Settings
+                </Button>
+              </div>
             </div>
           </Card>
         </div>
