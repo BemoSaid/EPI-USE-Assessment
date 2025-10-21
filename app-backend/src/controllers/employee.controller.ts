@@ -19,6 +19,7 @@ export class EmployeeController {
     this.getHierarchy = this.getHierarchy.bind(this);
     this.getDepartments = this.getDepartments.bind(this);
     this.getPotentialManagers = this.getPotentialManagers.bind(this);
+    this.getDashboardStats = this.getDashboardStats.bind(this);
   }
   // Gravatar URLs
   // private getGravatarUrl(email: string, size: number = 200): string {
@@ -561,6 +562,91 @@ export class EmployeeController {
     } catch (error) {
       console.error("Error fetching potential managers:", error);
       res.status(500).json({ error: "Failed to fetch potential managers" });
+    }
+  }
+
+  // Get dashboard statistics
+  async getDashboardStats(req: AuthenticatedRequest, res: Response) {
+    try {
+      const totalEmployees = await prisma.employee.count();
+
+      const departmentsResult = await prisma.employee.findMany({
+        where: {
+          department: {
+            not: null,
+          },
+        },
+        select: {
+          department: true,
+        },
+        distinct: ["department"],
+      });
+      const departmentsCount = departmentsResult.length;
+
+      const managersWithCounts = await prisma.employee.findMany({
+        where: {
+          role: {
+            in: ["CEO", "CTO", "DIRECTOR", "SENIOR_MANAGER", "MANAGER", "TEAM_LEAD"],
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          role: true,
+          department: true,
+          _count: {
+            select: {
+              subordinates: true,
+            },
+          },
+        },
+        orderBy: {
+          subordinates: {
+            _count: "desc",
+          },
+        },
+        take: 3,
+      });
+
+      const latestHires = await prisma.employee.findMany({
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          role: true,
+          department: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 5,
+      });
+
+      const stats = {
+        totalEmployees,
+        departmentsCount,
+        topManagers: managersWithCounts.map(manager => ({
+          id: manager.id,
+          name: `${manager.name} ${manager.surname}`,
+          role: manager.role,
+          department: manager.department,
+          subordinatesCount: manager._count.subordinates,
+        })),
+        latestHires: latestHires.map(employee => ({
+          id: employee.id,
+          name: `${employee.name} ${employee.surname}`,
+          role: employee.role,
+          department: employee.department,
+          hiredDate: employee.createdAt,
+        })),
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard statistics" });
     }
   }
 }

@@ -9,6 +9,7 @@ const employeeController = new EmployeeController();
 router.use(authenticateToken);
 
 router.get('/', employeeController.getAllEmployees);
+router.get('/dashboard-stats', employeeController.getDashboardStats);
 router.get('/hierarchy', employeeController.getHierarchy);
 router.get('/departments', employeeController.getDepartments);
 router.get('/potential-managers', employeeController.getPotentialManagers);
