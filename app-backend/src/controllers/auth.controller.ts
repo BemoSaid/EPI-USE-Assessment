@@ -129,7 +129,28 @@ export class AuthController {
         return res.status(404).json({ error: "User not found" });
       }
 
-      res.json(user);
+      // Check if user has an associated employee record
+      const employee = await prisma.employee.findFirst({
+        where: { userId: user.id },
+        select: {
+          role: true,
+          name: true,
+          surname: true,
+          department: true,
+        },
+      });
+
+      const responseData = {
+        ...user,
+        employee: employee ? {
+          role: employee.role,
+          name: employee.name,
+          surname: employee.surname,
+          department: employee.department,
+        } : null,
+      };
+
+      res.json(responseData);
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ error: "Failed to get user info" });

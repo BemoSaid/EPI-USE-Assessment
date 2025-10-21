@@ -4,7 +4,13 @@ export interface User {
   name: string;
   role: 'ADMIN' | 'VIEWER';
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
+  employee?: {
+    role: string;
+    name: string;
+    surname: string;
+    department: string | null;
+  } | null;
 }
 
 // Match backend AuthResponse

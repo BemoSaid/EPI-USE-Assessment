@@ -245,7 +245,7 @@ export const Dashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#5F9EA0]">Your Role</span>
                 <span className="text-sm font-semibold text-[#5F9EA0]">
-                  {user.role}
+                  {user.employee ? user.employee.role.replace(/_/g, ' ') : 'System Admin'}
                 </span>
               </div>
 
