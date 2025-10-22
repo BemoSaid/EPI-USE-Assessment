@@ -2,7 +2,7 @@ import React from "react";
 import { Employee } from "../services/employeeService";
 import { Chip } from "../components/ui/Chip";
 import { Button } from "../components/ui/Button";
-import { Mail, Phone, MapPin, Calendar, Users, X } from 'lucide-react';
+import { Mail, Phone, Calendar, Users } from 'lucide-react';
 
 interface EmployeeCardProps {
   employee: Employee;
@@ -25,7 +25,6 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee, onClick })
 
   // Fallbacks for missing fields
   const bio = (employee as any).bio || '';
-  const location = (employee as any).location || '-';
   const startDate = (employee as any).startDate || employee.birthDate;
   const reports = (employee as any).reports;
   const skills = (employee as any).skills || [];
@@ -86,15 +85,6 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee, onClick })
               <div>
                 <p className="text-xs text-[#B2D8D8] mb-1">Phone</p>
                 <p className="text-sm text-[#3A6F6F]">{employee.phoneNumber || '-'}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#F0F9F9] flex items-center justify-center shrink-0">
-                <MapPin className="w-5 h-5 text-[#6FB7B7]" />
-              </div>
-              <div>
-                <p className="text-xs text-[#B2D8D8] mb-1">Location</p>
-                <p className="text-sm text-[#3A6F6F]">{location}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
