@@ -41,6 +41,42 @@ export interface CreateEmployeeResponse {
   updatedAt: string;
 }
 
+export interface Employee {
+  id: number;
+  employeeNumber: string;
+  name: string;
+  surname: string;
+  birthDate: string;
+  salary: number;
+  role: string;
+  email?: string;
+  phoneNumber?: string;
+  department?: string;
+  profileUrl?: string;
+  managerId?: number;
+  manager?: Employee | null;
+  subordinates?: Employee[];
+  userId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeListResponse {
+  employees: Employee[];
+  total: number;
+}
+
+export interface EmployeeFilters {
+  search?: string;
+  role?: string;
+  department?: string;
+  managerId?: number;
+  sortField?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
 export const employeeService = {
   async createEmployee(employeeData: CreateEmployeeRequest): Promise<CreateEmployeeResponse> {
     const response = await api.post('/api/employees', employeeData);
@@ -49,6 +85,16 @@ export const employeeService = {
 
   async getAvailableRolesForUser(): Promise<string[]> {
     const response = await api.get('/api/employees/available-roles');
+    return response.data;
+  },
+
+  async getAllEmployees(filters: EmployeeFilters = {}): Promise<EmployeeListResponse> {
+    const params = { ...filters };
+    const response = await api.get("/api/employees", { params });
+    return response.data;
+  },
+  async getEmployeeById(id: number): Promise<Employee> {
+    const response = await api.get(`/api/employees/${id}`);
     return response.data;
   },
 };

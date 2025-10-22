@@ -122,7 +122,7 @@ export const Dashboard: React.FC = () => {
                 <p className="text-sm text-[#5F9EA0] mb-3">
                   Browse and search through all employees in the organization
                 </p>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={() => navigate("/employees")}>
                   View Employees
                 </Button>
               </div>
