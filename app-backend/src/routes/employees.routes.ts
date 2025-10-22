@@ -17,7 +17,8 @@ router.get('/departments', employeeController.getDepartments);
 router.get('/potential-managers', employeeController.getPotentialManagers);
 router.get('/:id', employeeController.getEmployeeById);
 router.post('/', requireAdmin, employeeController.createEmployee);
-router.put('/:id', requireAdmin, employeeController.updateEmployee);
+router.put('/:id/promote', employeeController.promoteEmployee);
+router.put('/:id', employeeController.updateEmployee);
 router.delete('/:id', requireAdmin, employeeController.deleteEmployee);
 
 export default router;

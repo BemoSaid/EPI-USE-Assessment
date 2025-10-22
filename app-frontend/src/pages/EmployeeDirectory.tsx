@@ -24,6 +24,10 @@ export const EmployeeDirectory: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmPromoteId, setConfirmPromoteId] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -65,9 +69,59 @@ export const EmployeeDirectory: React.FC = () => {
     }
   };
 
-  const handleEdit = (id: number) => alert(`Edit ${id}`);
-  const handleDelete = (id: number) => alert(`Delete ${id}`);
-  const handlePromote = (id: number) => alert(`Promote ${id}`);
+  const handlePromote = (id: number) => {
+    setConfirmPromoteId(id);
+  };
+
+  const confirmPromote = async () => {
+    if (confirmPromoteId !== null) {
+      try {
+        await employeeService.promoteEmployee(confirmPromoteId);
+        setFeedback({ message: 'Employee promoted!', type: 'success' });
+        setConfirmPromoteId(null);
+        fetchEmployees();
+      } catch (error: any) {
+        let errorMsg = 'Failed to promote employee. Permission is not granted based on your access rights.';
+        setFeedback({ message: errorMsg, type: 'error' });
+      }
+    }
+  };
+
+  const handleEdit = (id: number) => {
+    const emp = employees.find(e => e.id === id);
+    if (emp) setEditEmployee(emp);
+  };
+
+  const handleEditSubmit = async (updated: Partial<Employee>) => {
+    if (!editEmployee) return;
+    try {
+      await employeeService.updateEmployee(editEmployee.id, updated);
+      setFeedback({ message: 'Employee updated!', type: 'success' });
+      setEditEmployee(null);
+      fetchEmployees();
+    } catch (error) {
+      setFeedback({ message: 'Failed to update employee', type: 'error' });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId !== null) {
+      try {
+        await employeeService.deleteEmployee(confirmDeleteId);
+        setFeedback({ message: 'Employee deleted!', type: 'success' });
+        setConfirmDeleteId(null);
+        fetchEmployees();
+      } catch (error: any) {
+        let errorMsg = 'Failed to delete employee. Permission is not granted based on your access rights.';
+        setFeedback({ message: errorMsg, type: 'error' });
+      }
+    }
+  };
+
   const handleExport = () => alert("Export CSV");
   const handleImport = () => alert("Import CSV");
 
@@ -191,6 +245,66 @@ export const EmployeeDirectory: React.FC = () => {
         </Card>
         <Modal open={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} title="Employee Profile">
           {selectedEmployee && <EmployeeProfile employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />}
+        </Modal>
+        {/* Delete confirmation modal */}
+        <Modal open={confirmDeleteId !== null} onClose={() => setConfirmDeleteId(null)} title="Confirm Delete">
+          <div className="py-4 text-[#3A6F6F]">
+            <p className="mb-4">Are you sure you want to permanently remove this employee from the system? You will not be able to retrieve this employee once deleted.</p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+              <Button variant="primary" className={THEME_CLASSES.primaryButton} onClick={confirmDelete}>Delete</Button>
+            </div>
+          </div>
+        </Modal>
+        {/* Promote confirmation modal */}
+        <Modal open={confirmPromoteId !== null} onClose={() => setConfirmPromoteId(null)} title="Confirm Promotion">
+          <div className="py-4 text-[#3A6F6F]">
+            <p className="mb-4">Are you sure you want to promote this employee?</p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setConfirmPromoteId(null)}>Cancel</Button>
+              <Button variant="primary" className={THEME_CLASSES.primaryButton} onClick={confirmPromote}>Promote</Button>
+            </div>
+          </div>
+        </Modal>
+        {/* Feedback modal */}
+        <Modal open={!!feedback} onClose={() => setFeedback(null)} title={feedback?.type === 'success' ? 'Success' : 'Error'}>
+          <div className={`py-4 text-center ${feedback?.type === 'success' ? 'text-green-600' : 'text-[#B2D8D8] bg-[#F0F9F9]'}`}>
+            <p>{feedback?.message}</p>
+            <div className="mt-4 flex justify-center">
+              <Button onClick={() => setFeedback(null)}>OK</Button>
+            </div>
+          </div>
+        </Modal>
+        {/* Edit Employee modal */}
+        <Modal open={!!editEmployee} onClose={() => setEditEmployee(null)} title="Edit Employee">
+          {editEmployee && (
+            <form
+              className="space-y-4"
+              onSubmit={e => {
+                e.preventDefault();
+                const form = e.target as HTMLFormElement;
+                const formData = new FormData(form);
+                const updated: Partial<Employee> = {
+                  name: formData.get('name') as string,
+                  surname: formData.get('surname') as string,
+                  role: formData.get('role') as string,
+                  department: formData.get('department') as string,
+                  phoneNumber: formData.get('phoneNumber') as string,
+                };
+                handleEditSubmit(updated);
+              }}
+            >
+              <Input name="name" defaultValue={editEmployee.name} label="Name" required />
+              <Input name="surname" defaultValue={editEmployee.surname} label="Surname" required />
+              <Input name="phoneNumber" defaultValue={editEmployee.phoneNumber || ''} label="Phone Number" />
+              <Input name="department" defaultValue={editEmployee.department || ''} label="Department" />
+
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setEditEmployee(null)} type="button">Cancel</Button>
+                <Button variant="primary" className={THEME_CLASSES.primaryButton} type="submit">Save</Button>
+              </div>
+            </form>
+          )}
         </Modal>
       </div>
     </div>

@@ -97,4 +97,15 @@ export const employeeService = {
     const response = await api.get(`/api/employees/${id}`);
     return response.data;
   },
+  async promoteEmployee(id: number): Promise<Employee> {
+    const response = await api.put(`/api/employees/${id}/promote`);
+    return response.data;
+  },
+  async updateEmployee(id: number, data: Partial<Employee>): Promise<Employee> {
+    const response = await api.put(`/api/employees/${id}`, data);
+    return response.data;
+  },
+  async deleteEmployee(id: number): Promise<void> {
+    await api.delete(`/api/employees/${id}`);
+  },
 };

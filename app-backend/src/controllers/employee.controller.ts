@@ -83,6 +83,7 @@ export class EmployeeController {
     this.getDashboardStats = this.getDashboardStats.bind(this);
     this.getAvailableEmployees = this.getAvailableEmployees.bind(this);
     this.getAvailableRoles = this.getAvailableRoles.bind(this);
+    this.promoteEmployee = this.promoteEmployee.bind(this);
   }
   // Gravatar URLs
   // private getGravatarUrl(email: string, size: number = 200): string {
@@ -454,132 +455,82 @@ export class EmployeeController {
       res.status(500).json({ error: "Failed to create employee" });
     }
   }
-  // Update employee
-  async updateEmployee(req: AuthenticatedRequest, res: Response) {
+  // Promote employee
+  async promoteEmployee(req: any, res: Response) {
     try {
-      const id = parseInt(req.params.id!);
-      const updateData: UpdateEmployeeDto = req.body;
-
-      // Validate that employee is not their own manager
-      if (updateData.managerId && updateData.managerId === id) {
-        return res
-          .status(400)
-          .json({ error: "Employee cannot be their own manager" });
+      const { id } = req.params;
+      const employee = await prisma.employee.findUnique({ where: { id: Number(id) } });
+      if (!employee) return res.status(404).json({ error: 'Employee not found' });
+      // Get current user's role
+      const userId = req.user?.id;
+      const currentUser = await prisma.employee.findFirst({ where: { userId }, select: { role: true } });
+      if (!currentUser) return res.status(403).json({ error: 'No permission to promote (not an employee)' });
+      const currentUserRank = this.roleHierarchy[currentUser.role];
+      // Promotion logic
+      const roles: Role[] = [
+        'INTERN', 'JUNIOR_EMPLOYEE', 'SENIOR_EMPLOYEE', 'TEAM_LEAD', 'MANAGER', 'SENIOR_MANAGER', 'DIRECTOR', 'CTO', 'CEO'
+      ];
+      const currentIndex = roles.indexOf(employee.role);
+      if (currentIndex === -1 || currentIndex === roles.length - 1) {
+        return res.status(400).json({ error: 'Cannot promote further' });
       }
-
-      // Check if employee exists
-      const existingEmployee = await prisma.employee.findUnique({
-        where: { id },
+      const newRole = roles[currentIndex + 1];
+      const newRoleRank = this.roleHierarchy[newRole as Role];
+      // Debug logging for promotion logic
+      console.log('Promote attempt:', {
+        currentUserRole: currentUser.role,
+        currentUserRank,
+        employeeRole: employee.role,
+        newRole,
+        newRoleRank
       });
-
-      if (!existingEmployee) {
-        return res.status(404).json({ error: "Employee not found" });
+      // Only allow promotion if new role rank >= current user's rank (lower authority)
+      if (newRoleRank < currentUserRank) {
+        return res.status(403).json({ error: `You do not have permission to promote to ${newRole}` });
       }
-
-      // Validate manager exists if provided
-      if (updateData.managerId) {
-        const manager = await prisma.employee.findUnique({
-          where: { id: updateData.managerId },
-        });
-
-        if (!manager) {
-          return res.status(400).json({ error: "Manager not found" });
-        }
-      }
-
-      const updatedEmployee = await prisma.employee.update({
-        where: { id },
-        data: {
-          ...updateData,
-          ...(updateData.birthDate && {
-            birthDate: new Date(updateData.birthDate),
-          }),
-        },
-        include: {
-          manager: {
-            select: {
-              id: true,
-              name: true,
-              surname: true,
-              employeeNumber: true,
-              role: true,
-            },
-          },
-          subordinates: {
-            select: {
-              id: true,
-              name: true,
-              surname: true,
-              employeeNumber: true,
-              role: true,
-            },
-          },
-          user: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              role: true,
-            },
-          },
-        },
-      });
-
-      // Add Gravatar URL only if it exists
-      const gravatarUrl = await this.getGravatarUrl(
-        updatedEmployee.email || ""
-      );
-      const employeeResponse = {
-        ...updatedEmployee,
-        ...(gravatarUrl && { gravatarUrl }), 
-      };
-
-      res.json(employeeResponse);
+      const updated = await prisma.employee.update({ where: { id: employee.id }, data: { role: newRole as Role } });
+      res.json(updated);
     } catch (error) {
-      console.error("Error updating employee:", error);
-      res.status(500).json({ error: "Failed to update employee" });
+      res.status(500).json({ error: 'Failed to promote employee' });
     }
   }
 
-  // Delete employee, should be cascading
-  async deleteEmployee(req: AuthenticatedRequest, res: Response) {
+  // Update employee
+  async updateEmployee(req: any, res: Response) {
     try {
-      const id = parseInt(req.params.id!);
-
-      const existingEmployee = await prisma.employee.findUnique({
-        where: { id },
-        include: {
-          subordinates: true,
-        },
-      });
-
-      if (!existingEmployee) {
-        return res.status(404).json({ error: "Employee not found" });
+      const { id } = req.params;
+      const data = req.body ?? {};
+      // Defensive: ensure data is a plain object
+      if (typeof data !== 'object' || data === null) {
+        return res.status(400).json({ error: 'Invalid data for update' });
       }
-
-      // Check if employee has subordinates
-      if (existingEmployee.subordinates.length > 0) {
-        return res.status(400).json({
-          error:
-            "Cannot delete employee with subordinates. Please reassign subordinates first.",
-          subordinateCount: existingEmployee.subordinates.length,
-          subordinates: existingEmployee.subordinates.map((s) => ({
-            id: s.id,
-            name: s.name,
-            surname: s.surname,
-            employeeNumber: s.employeeNumber,
-          })),
-        });
-      }
-
-      await prisma.employee.delete({
-        where: { id },
-      });
-
-      res.json({ message: "Employee deleted successfully" });
+      const updated = await prisma.employee.update({ where: { id: Number(id) }, data });
+      res.json(updated);
     } catch (error) {
-      console.error("Error deleting employee:", error);
-      res.status(500).json({ error: "Failed to delete employee" });
+      res.status(500).json({ error: 'Failed to update employee' });
+    }
+  }
+
+  // Delete employee
+  async deleteEmployee(req: any, res: Response) {
+    try {
+      const { id } = req.params;
+      const employee = await prisma.employee.findUnique({ where: { id: Number(id) } });
+      if (!employee) return res.status(404).json({ error: 'Employee not found' });
+      // Get current user's role
+      const userId = req.user?.id;
+      const currentUser = await prisma.employee.findFirst({ where: { userId }, select: { role: true } });
+      if (!currentUser) return res.status(403).json({ error: 'No permission to delete (not an employee)' });
+      const currentUserRank = this.roleHierarchy[currentUser.role];
+      const employeeRank = this.roleHierarchy[employee.role];
+      // Only allow delete if employee's rank is greater than current user's rank (lower authority)
+      if (employeeRank <= currentUserRank) {
+        return res.status(403).json({ error: `You do not have permission to delete a user with role ${employee.role}` });
+      }
+      await prisma.employee.delete({ where: { id: Number(id) } });
+      res.status(204).end();
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete employee' });
     }
   }
 
