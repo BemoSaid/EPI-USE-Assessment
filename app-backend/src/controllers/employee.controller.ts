@@ -9,6 +9,13 @@ import prisma from "../config/database.js";
 import crypto from "crypto";
 import fetch from "node-fetch";
 import bcrypt from "bcryptjs";
+import { Parser as Json2CsvParser } from 'json2csv';
+import multer from 'multer';
+import csvParser from 'csv-parser';
+import fs from 'fs';
+import path from 'path';
+
+const upload = multer({ dest: 'uploads/' });
 
 export class EmployeeController {
   // Role hierarchy - lower numbers = higher authority
@@ -24,51 +31,41 @@ export class EmployeeController {
     INTERN: 9,
   } as const;
 
-  // Helper function to map employee roles to user roles
   private mapEmployeeRoleToUserRole(employeeRole: Role): "ADMIN" | "VIEWER" {
     const adminRoles: Role[] = ["CEO", "CTO", "DIRECTOR", "SENIOR_MANAGER", "MANAGER"];
     return adminRoles.includes(employeeRole) ? "ADMIN" : "VIEWER";
   }
 
-  // Helper function to generate default password
   private generateDefaultPassword(employeeNumber: string, surname: string): string {
-    // Format: FirstThreeLettersOfSurname + EmployeeNumber + "!"
     const surnamePrefix = surname.substring(0, 3).toLowerCase();
     return `${surnamePrefix}${employeeNumber}!`;
   }
 
-  // Helper function to check if user can create employee with specific role
   private async canCreateEmployeeRole(creatorUserId: string, targetRole: Role): Promise<boolean> {
-    // Get the creator's employee record to check their role
     const creatorEmployee = await prisma.employee.findFirst({
       where: { userId: creatorUserId },
       select: { role: true }
     });
 
     if (!creatorEmployee) {
-      // If creator is not an employee (pure admin user), allow all except CEO
       return targetRole !== "CEO";
     }
 
     const creatorRank = this.roleHierarchy[creatorEmployee.role];
     const targetRank = this.roleHierarchy[targetRole];
 
-    // Creator can only create roles with higher rank numbers (lower authority)
     return targetRank > creatorRank;
   }
 
-  // Helper function to check if someone can be a manager for a specific role
   private canBeManager(managerRole: Role, subordinateRole: Role): boolean {
     const managerRank = this.roleHierarchy[managerRole];
     const subordinateRank = this.roleHierarchy[subordinateRole];
 
-    // Manager must have lower rank number (higher authority) than subordinate
     return managerRank < subordinateRank;
   }
 
-  // Helper function to determine if role should have no manager (top executives)
   private shouldHaveNoManager(role: Role): boolean {
-    return role === "CEO"; // Only CEO has no manager by default
+    return role === "CEO"; 
   }
 
   constructor() {
@@ -84,6 +81,8 @@ export class EmployeeController {
     this.getAvailableEmployees = this.getAvailableEmployees.bind(this);
     this.getAvailableRoles = this.getAvailableRoles.bind(this);
     this.promoteEmployee = this.promoteEmployee.bind(this);
+    this.exportEmployeesCsv = this.exportEmployeesCsv.bind(this);
+    this.importEmployeesCsv = this.importEmployeesCsv.bind(this);
   }
   // Gravatar URLs
   // private getGravatarUrl(email: string, size: number = 200): string {
@@ -234,7 +233,9 @@ export class EmployeeController {
   async getEmployeeById(req: AuthenticatedRequest, res: Response) {
     try {
       const id = parseInt(req.params.id!);
-
+      if (!id || isNaN(id)) {
+        return res.status(400).json({ error: "Invalid or missing employee id" });
+      }
       const employee = await prisma.employee.findUnique({
         where: { id },
         include: {
@@ -266,18 +267,15 @@ export class EmployeeController {
           },
         },
       });
-
       if (!employee) {
         return res.status(404).json({ error: "Employee not found" });
       }
-
       // Add Gravatar URL only if it exists
       const gravatarUrl = await this.getGravatarUrl(employee.email || "");
       const employeeResponse = {
         ...employee,
         ...(gravatarUrl && { gravatarUrl }), // Only add if exists
       };
-
       res.json(employeeResponse);
     } catch (error) {
       console.error("Error fetching employee:", error);
@@ -793,6 +791,132 @@ export class EmployeeController {
     } catch (error) {
       console.error("Error fetching available employees:", error);
       res.status(500).json({ error: "Failed to fetch available employees" });
+    }
+  }
+
+  // Export employees as CSV
+  async exportEmployeesCsv(req: AuthenticatedRequest, res: Response) {
+    try {
+      // Optionally, apply filters from query params (reuse getAllEmployees logic if needed)
+      const employees = await prisma.employee.findMany({
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          employeeNumber: true,
+          email: true,
+          role: true,
+          department: true,
+          manager: { select: { email: true } },
+        },
+      });
+      // Flatten manager email, always provide a string
+      const data = employees.map(e => ({
+        ...e,
+        managerEmail: e.manager && e.manager.email ? e.manager.email : '',
+      }));
+      // Remove nested manager
+      data.forEach(d => { delete (d as any).manager; });
+      const fields = ['id', 'name', 'surname', 'employeeNumber', 'email', 'role', 'department', 'managerEmail'];
+      const json2csv = new Json2CsvParser({ fields });
+      const csv = json2csv.parse(data);
+      res.header('Content-Type', 'text/csv');
+      res.attachment('employees.csv');
+      return res.send(csv);
+    } catch (error) {
+      console.error('CSV export error:', error);
+      res.status(500).json({ error: 'Failed to export employees as CSV' });
+    }
+  }
+
+  // Import employees from CSV
+  async importEmployeesCsv(req: AuthenticatedRequest, res: Response) {
+    // This method expects a file upload (CSV)
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      const filePath = req.file.path;
+      const results: any[] = [];
+      const summary = { created: 0, updated: 0, userCreated: 0, errors: [] as string[] };
+      const stream = fs.createReadStream(filePath)
+        .pipe(csvParser());
+      for await (const row of stream) {
+        try {
+          const { name, surname, employeeNumber, email, role, department, managerEmail, birthDate, salary } = row;
+          if (!name || !surname || !employeeNumber || !email || !role || !birthDate || !salary) {
+            summary.errors.push(`Missing required fields for employeeNumber: ${employeeNumber || 'unknown'}`);
+            continue;
+          }
+          let managerId = undefined;
+          if (managerEmail && managerEmail.trim() !== '') {
+            const manager = await prisma.employee.findFirst({ where: { email: managerEmail } });
+            if (manager) managerId = manager.id;
+          }
+          const existing = await prisma.employee.findFirst({ where: { employeeNumber } });
+          let userId = null;
+          if (email) {
+            const existingUser = await prisma.user.findUnique({ where: { email } });
+            if (!existingUser) {
+              const defaultPassword = this.generateDefaultPassword(employeeNumber, surname);
+              const userRole = this.mapEmployeeRoleToUserRole(role);
+              const hashedPassword = await bcrypt.hash(defaultPassword, 12);
+              const user = await prisma.user.create({
+                data: {
+                  email,
+                  password: hashedPassword,
+                  name: `${name} ${surname}`,
+                  role: userRole,
+                },
+              });
+              userId = user.id;
+              summary.userCreated++;
+            } else {
+              userId = existingUser.id;
+            }
+          }
+          if (existing) {
+            await prisma.employee.update({
+              where: { id: existing.id },
+              data: {
+                name,
+                surname,
+                email,
+                role,
+                department,
+                managerId: managerId ?? null,
+                birthDate: new Date(birthDate),
+                salary: Number(salary),
+                userId: userId ?? existing.userId ?? null
+              },
+            });
+            summary.updated++;
+          } else {
+            await prisma.employee.create({
+              data: {
+                name,
+                surname,
+                employeeNumber,
+                email,
+                role,
+                department,
+                managerId: managerId ?? null,
+                birthDate: new Date(birthDate),
+                salary: Number(salary),
+                userId: userId ?? null
+              },
+            });
+            summary.created++;
+          }
+        } catch (err: any) {
+          summary.errors.push(`Row error: ${err.message}`);
+        }
+      }
+      fs.unlinkSync(filePath); 
+      res.json(summary);
+    } catch (error) {
+      console.error('CSV import error:', error);
+      res.status(500).json({ error: 'Failed to import employees from CSV' });
     }
   }
 }

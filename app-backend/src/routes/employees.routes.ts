@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { EmployeeController } from '../controllers/employee.controller.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import multer from 'multer';
 
 const router = Router();
 const employeeController = new EmployeeController();
+const upload = multer({ dest: 'uploads/' });
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -20,5 +22,7 @@ router.post('/', requireAdmin, employeeController.createEmployee);
 router.put('/:id/promote', employeeController.promoteEmployee);
 router.put('/:id', employeeController.updateEmployee);
 router.delete('/:id', requireAdmin, employeeController.deleteEmployee);
+router.get('/export', employeeController.exportEmployeesCsv);
+router.post('/import', requireAdmin, upload.single('file'), employeeController.importEmployeesCsv);
 
 export default router;

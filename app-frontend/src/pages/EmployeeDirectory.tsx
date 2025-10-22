@@ -11,6 +11,7 @@ import { EmployeeCard } from "../components/EmployeeCard";
 import { EmployeeProfile } from "../components/EmployeeProfile";
 import { Chip } from "../components/ui/Chip";
 import { TagFilter } from "../components/TagFilter";
+import { useToast } from "../context/ToastContext";
 
 export const EmployeeDirectory: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -28,7 +29,13 @@ export const EmployeeDirectory: React.FC = () => {
   const [confirmPromoteId, setConfirmPromoteId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState<any>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchEmployees();
@@ -122,8 +129,50 @@ export const EmployeeDirectory: React.FC = () => {
     }
   };
 
-  const handleExport = () => alert("Export CSV");
-  const handleImport = () => alert("Import CSV");
+  const handleExport = async () => {
+    try {
+      const blob = await employeeService.exportEmployeesCsv();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'employees.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showToast('Employee CSV exported!', 'success');
+    } catch (error) {
+      showToast('Failed to export CSV', 'error');
+    }
+  };
+
+  const handleImport = () => {
+    setImportModalOpen(true);
+    setImportSummary(null);
+    setImportError(null);
+    setImportFile(null);
+  };
+
+  const handleImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) {
+      setImportError('Please select a CSV file.');
+      return;
+    }
+    setImporting(true);
+    setImportError(null);
+    try {
+      const summary = await employeeService.importEmployeesCsv(importFile);
+      setImportSummary(summary);
+      showToast('Import completed!', 'success');
+      fetchEmployees();
+    } catch (error: any) {
+      setImportError(error?.response?.data?.error || 'Failed to import CSV');
+      showToast('Failed to import CSV', 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const handleTagToggle = (tag: string) => {
     setSelectedTags((prev) => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
@@ -305,6 +354,38 @@ export const EmployeeDirectory: React.FC = () => {
               </div>
             </form>
           )}
+        </Modal>
+        {/* Import CSV Modal */}
+        <Modal open={importModalOpen} onClose={() => setImportModalOpen(false)} title="Import Employees from CSV">
+          <form onSubmit={handleImportSubmit} className="space-y-4">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={e => setImportFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#5F9EA0] focus:border-[#5F9EA0]"
+              required
+            />
+            {importing && <div className="text-[#5F9EA0]">Importing...</div>}
+            {importError && <div className="text-red-500">{importError}</div>}
+            {importSummary && (
+              <div className="bg-[#F0F9F9] border border-[#B2D8D8] rounded-lg p-3 text-[#3A6F6F]">
+                <div>Imported: <b>{importSummary.created}</b></div>
+                <div>Updated: <b>{importSummary.updated}</b></div>
+                {importSummary.errors?.length > 0 && (
+                  <div className="mt-2">
+                    <div className="font-semibold text-red-600">Errors:</div>
+                    <ul className="list-disc ml-6 text-sm">
+                      {importSummary.errors.map((err: string, i: number) => <li key={i}>{err}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="outline" onClick={() => setImportModalOpen(false)} type="button">Cancel</Button>
+              <Button variant="primary" className={THEME_CLASSES.primaryButton} type="submit" isLoading={importing}>Import</Button>
+            </div>
+          </form>
         </Modal>
       </div>
     </div>
