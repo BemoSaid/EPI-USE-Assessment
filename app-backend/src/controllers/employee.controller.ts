@@ -828,8 +828,40 @@ export class EmployeeController {
   // Export employees as CSV
   async exportEmployeesCsv(req: AuthenticatedRequest, res: Response) {
     try {
-      // Optionally, apply filters from query params (reuse getAllEmployees logic if needed)
+      // Accept filters from query params (reuse getAllEmployees logic)
+      const {
+        search,
+        role,
+        department,
+        managerId,
+        sortField = "employeeNumber",
+        sortDirection = "asc",
+      } = req.query;
+
+      const where: any = {};
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search as string, mode: "insensitive" } },
+          { surname: { contains: search as string, mode: "insensitive" } },
+          { employeeNumber: { contains: search as string, mode: "insensitive" } },
+          { email: { contains: search as string, mode: "insensitive" } },
+          { department: { contains: search as string, mode: "insensitive" } },
+        ];
+      }
+      if (role && typeof role === 'string' && role.trim() !== '') {
+        where.role = role as Role;
+      }
+      if (department && typeof department === 'string' && department.trim() !== '') {
+        where.department = { equals: department as string };
+      }
+      if (managerId && !isNaN(Number(managerId))) {
+        where.managerId = Number(managerId);
+      }
+
       const employees = await prisma.employee.findMany({
+        where,
+        orderBy: { [sortField as string]: sortDirection === "desc" ? "desc" : "asc" },
         select: {
           id: true,
           name: true,
@@ -841,12 +873,10 @@ export class EmployeeController {
           manager: { select: { email: true } },
         },
       });
-      // Flatten manager email, always provide a string
       const data = employees.map(e => ({
         ...e,
         managerEmail: e.manager && e.manager.email ? e.manager.email : '',
       }));
-      // Remove nested manager
       data.forEach(d => { delete (d as any).manager; });
       const fields = ['id', 'name', 'surname', 'employeeNumber', 'email', 'role', 'department', 'managerEmail'];
       const json2csv = new Json2CsvParser({ fields });
@@ -862,7 +892,6 @@ export class EmployeeController {
 
   // Import employees from CSV
   async importEmployeesCsv(req: AuthenticatedRequest, res: Response) {
-    // This method expects a file upload (CSV)
     try {
       if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });

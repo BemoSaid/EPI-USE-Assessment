@@ -7,19 +7,8 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { dashboardService, DashboardStats } from "../services/dashboardService";
 import { useToast } from "../context/ToastContext";
-import {
-  Users,
-  UserPlus,
-  Settings,
-  LogOut,
-  Building2,
-  BarChart3,
-  Shield,
-  Eye,
-  TrendingUp,
-  Calendar,
-  Award,
-} from "lucide-react";
+import { Users,UserPlus,Settings,LogOut,Building2,GitBranch,Shield,Eye,TrendingUp,Calendar,Award} from "lucide-react";
+
 
 export const Dashboard: React.FC = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -117,10 +106,10 @@ export const Dashboard: React.FC = () => {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-[#3A6F6F] mb-1">
-                  Employee Directory
+                  Employee Finder
                 </h3>
                 <p className="text-sm text-[#5F9EA0] mb-3">
-                  Browse and search through all employees in the organization
+                  Browse and search through all employees in the organization.
                 </p>
                 <Button size="sm" variant="outline" onClick={() => navigate("/employees")}>
                   View Employees
@@ -133,14 +122,14 @@ export const Dashboard: React.FC = () => {
           <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-[#5F9EA0]">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-[#6FB7B7] rounded-xl">
-                <BarChart3 className="h-6 w-6 text-white" />
+                <GitBranch className="h-6 w-6 text-white" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-[#3A6F6F] mb-1">
-                  Organization Chart
+                  Organization Tree
                 </h3>
                 <p className="text-sm text-[#5F9EA0] mb-3">
-                  View the complete organizational hierarchy structure
+                  View the complete organizational hierarchy structure in the form of a tree.
                 </p>
                 <Button size="sm" variant="outline" onClick={() => navigate("/organization-chart")}> 
                   View Hierarchy
@@ -161,7 +150,7 @@ export const Dashboard: React.FC = () => {
                     Add New Employee
                   </h3>
                   <p className="text-sm text-[#5F9EA0] mb-3">
-                    Create employee records with automatic user accounts
+                    Add employees to the hierarchy.
                   </p>
                   <Button
                     size="sm"
@@ -218,7 +207,7 @@ export const Dashboard: React.FC = () => {
                           <span className="text-[#5F9EA0] ml-2">({manager.role})</span>
                         </div>
                         <span className="text-[#6FB7B7] font-medium">
-                          {manager.subordinatesCount} reports
+                          {manager.subordinatesCount} subordinates
                         </span>
                       </div>
                     ))}

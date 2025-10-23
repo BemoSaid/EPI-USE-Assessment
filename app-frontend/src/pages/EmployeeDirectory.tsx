@@ -12,6 +12,7 @@ import { EmployeeProfile } from "../components/EmployeeProfile";
 import { Chip } from "../components/ui/Chip";
 import { TagFilter } from "../components/TagFilter";
 import { useToast } from "../context/ToastContext";
+import { gravatarService, GravatarProfile } from "../services/gravatarService";
 
 export const EmployeeDirectory: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -34,6 +35,9 @@ export const EmployeeDirectory: React.FC = () => {
   const [importSummary, setImportSummary] = useState<any>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [gravatarProfile, setGravatarProfile] = useState<GravatarProfile | null>(null);
+  const [hasGravatar, setHasGravatar] = useState(false);
+  const [isLoadingGravatar, setIsLoadingGravatar] = useState(false);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -178,13 +182,34 @@ export const EmployeeDirectory: React.FC = () => {
     setSelectedTags((prev) => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
-  // Group employees by department
   const employeesByDept: Record<string, Employee[]> = {};
   employees.forEach((e) => {
     const dept = e.department || "Other";
     if (!employeesByDept[dept]) employeesByDept[dept] = [];
     employeesByDept[dept].push(e);
   });
+
+  // When an employee is selected, fetch Gravatar profile
+  useEffect(() => {
+    const fetchGravatar = async () => {
+      if (selectedEmployee?.email) {
+        setIsLoadingGravatar(true);
+        const exists = await gravatarService.checkGravatarExists(selectedEmployee.email);
+        setHasGravatar(exists);
+        if (exists) {
+          const profile = await gravatarService.getGravatarProfile(selectedEmployee.email);
+          setGravatarProfile(profile);
+        } else {
+          setGravatarProfile(null);
+        }
+        setIsLoadingGravatar(false);
+      } else {
+        setHasGravatar(false);
+        setGravatarProfile(null);
+      }
+    };
+    if (selectedEmployee) fetchGravatar();
+  }, [selectedEmployee]);
 
   return (
     <div className="min-h-screen py-10 px-4 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -293,7 +318,15 @@ export const EmployeeDirectory: React.FC = () => {
           )}
         </Card>
         <Modal open={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} title="Employee Profile">
-          {selectedEmployee && <EmployeeProfile employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />}
+          {selectedEmployee && (
+            <EmployeeProfile 
+              employee={selectedEmployee} 
+              gravatarProfile={gravatarProfile}
+              hasGravatar={hasGravatar}
+              isLoadingGravatar={isLoadingGravatar}
+              onClose={() => setSelectedEmployee(null)} 
+            />
+          )}
         </Modal>
         {/* Delete confirmation modal */}
         <Modal open={confirmDeleteId !== null} onClose={() => setConfirmDeleteId(null)} title="Confirm Delete">

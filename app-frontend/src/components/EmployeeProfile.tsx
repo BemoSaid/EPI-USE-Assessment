@@ -3,15 +3,26 @@ import { Employee } from "../services/employeeService";
 import { Chip } from "./ui/Chip";
 import { Button } from "./ui/Button";
 import { Mail, Phone, Calendar, Users } from 'lucide-react';
+import { gravatarService, GravatarProfile } from "../services/gravatarService";
 
 interface EmployeeProfileProps {
   employee: Employee;
   onClose: () => void;
+  gravatarProfile?: GravatarProfile | null;
+  hasGravatar?: boolean;
+  isLoadingGravatar?: boolean;
 }
 
-export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onClose }) => {
+export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onClose, gravatarProfile, hasGravatar, isLoadingGravatar }) => {
   const getInitials = () => {
     return `${employee.name?.[0] || ''}${employee.surname?.[0] || ''}`;
+  };
+
+  const getAvatarUrl = () => {
+    if (hasGravatar && employee.email) {
+      return gravatarService.getGravatarUrl(employee.email, 112);
+    }
+    return undefined;
   };
 
   const formatDate = (dateString?: string) => {
@@ -35,8 +46,12 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onCl
       <div className="px-8 pb-8">
         {/* Avatar and info */}
         <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
-          <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-[#5F9EA0] to-[#6FB7B7] flex items-center justify-center text-white font-bold text-3xl shadow-lg border-4 border-white">
-            {getInitials()}
+          <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-[#5F9EA0] to-[#6FB7B7] flex items-center justify-center text-white font-bold text-3xl shadow-lg border-4 border-white overflow-hidden">
+            {getAvatarUrl() ? (
+              <img src={getAvatarUrl()} alt="Gravatar" className="w-full h-full object-cover rounded-2xl" />
+            ) : (
+              getInitials()
+            )}
           </div>
           <div className="flex-1 pb-2">
             <h2 className="text-3xl font-bold text-[#3A6F6F] mb-1">
@@ -95,6 +110,22 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ employee, onCl
             </div>
           </div>
         </div>
+
+        {/* Gravatar profile details if available */}
+        {hasGravatar && gravatarProfile && (
+          <div className="mb-6 bg-[#E8F4F8] border border-[#B2D8D8] rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-[#3A6F6F] mb-2 uppercase tracking-wide">Gravatar Profile</h3>
+            {gravatarProfile.displayName && (
+              <p className="text-[#3A6F6F] text-base font-medium">{gravatarProfile.displayName}</p>
+            )}
+            {gravatarProfile.aboutMe && (
+              <p className="text-[#5F9EA0] text-sm mt-2">{gravatarProfile.aboutMe}</p>
+            )}
+            {gravatarProfile.currentLocation && (
+              <p className="text-xs text-[#B2D8D8] mt-1">Location: {gravatarProfile.currentLocation}</p>
+            )}
+          </div>
+        )}
 
         {/* Team info */}
         {reports !== undefined && (

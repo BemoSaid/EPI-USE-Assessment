@@ -10,6 +10,7 @@ const upload = multer({ dest: 'uploads/' });
 // All routes require authentication
 router.use(authenticateToken);
 
+router.get('/export', employeeController.exportEmployeesCsv);
 router.get('/', employeeController.getAllEmployees);
 router.get('/dashboard-stats', employeeController.getDashboardStats);
 router.get('/available-for-users', employeeController.getAvailableEmployees);
@@ -22,7 +23,6 @@ router.post('/', requireAdmin, employeeController.createEmployee);
 router.put('/:id/promote', employeeController.promoteEmployee);
 router.put('/:id', employeeController.updateEmployee);
 router.delete('/:id', requireAdmin, employeeController.deleteEmployee);
-router.get('/export', employeeController.exportEmployeesCsv);
 router.post('/import', requireAdmin, upload.single('file'), employeeController.importEmployeesCsv);
 router.get('/me', async (req, res) => {
   try {
