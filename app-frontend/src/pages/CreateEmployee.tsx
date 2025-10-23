@@ -9,6 +9,7 @@ import { EMPLOYEE_ROLES } from '../utils/constants';
 import { employeeService, CreateEmployeeRequest } from '../services/employeeService';
 import { useAuth } from '../hooks/useAuth';
 import { userService } from '../services/userService';
+import { generateEmployeeCredentialsPDF } from '../lib/generateEmployeeCredentialsPDF';
 
 interface CreateEmployeeData {
   employeeNumber: string;
@@ -233,7 +234,11 @@ export const CreateEmployee: React.FC = () => {
 
       // If user credentials were generated, show them
       if (response.userCredentials) {
-        setGeneratedCredentials(response.userCredentials);
+        setGeneratedCredentials({
+          ...response.userCredentials,
+          name: response.name,
+          surname: response.surname,
+        });
         setShowCredentials(true);
       } else {
         // If no credentials generated (no email), redirect immediately
@@ -326,11 +331,26 @@ export const CreateEmployee: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 mb-4">
               <Button
                 variant="outline"
-                onClick={() => navigate('/create-employee')}
                 className="flex items-center gap-2"
+                onClick={() => {
+                  setShowCredentials(false);
+                  setGeneratedCredentials(null);
+                  setFormData({
+                    employeeNumber: '',
+                    name: '',
+                    surname: '',
+                    birthDate: '',
+                    salary: '',
+                    role: 'JUNIOR_EMPLOYEE',
+                    email: '',
+                    phoneNumber: '',
+                    department: ''
+                  });
+                  setErrors({});
+                }}
               >
                 <UserPlus className="h-4 w-4" />
                 Create Another Employee
@@ -345,6 +365,18 @@ export const CreateEmployee: React.FC = () => {
                 Back to Dashboard
               </Button>
             </div>
+            <Button
+              variant="primary"
+              className="w-full mt-2"
+              onClick={() => generateEmployeeCredentialsPDF({
+                name: generatedCredentials.name || '',
+                email: generatedCredentials.email,
+                password: generatedCredentials.temporaryPassword,
+                role: generatedCredentials.role,
+              })}
+            >
+              Download Credentials PDF
+            </Button>
           </Card>
         </div>
       </div>
