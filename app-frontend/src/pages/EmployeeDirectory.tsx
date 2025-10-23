@@ -13,6 +13,7 @@ import { Chip } from "../components/ui/Chip";
 import { TagFilter } from "../components/TagFilter";
 import { useToast } from "../context/ToastContext";
 import { gravatarService, GravatarProfile } from "../services/gravatarService";
+import ShinyText from '../components/ui/ShinyText';
 
 export const EmployeeDirectory: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -218,7 +219,7 @@ export const EmployeeDirectory: React.FC = () => {
           <Button size="sm" variant="outline" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
           </Button>
-          <h1 className="text-2xl font-bold text-[#3A6F6F]">Employee Directory</h1>
+          <ShinyText text="Employee Finder" speed={3} className="text-2xl font-bold" />
         </div>
         {/* Filters & Actions */}
         <Card className="p-6 mb-6">

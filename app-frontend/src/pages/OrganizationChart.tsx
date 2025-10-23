@@ -5,6 +5,7 @@ import { SearchBar } from "../components/orgchart/SearchBar";
 import { employeeService } from "../services/employeeService";
 import { Button } from "../components/ui/Button";
 import { useNavigate } from "react-router-dom";
+import ShinyText from '../components/ui/ShinyText';
 
 function countNodes(node: any): number {
   if (!node) return 0;
@@ -94,7 +95,7 @@ export const OrganizationChart: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center mb-4 gap-4">
           <Button size="sm" variant="outline" onClick={() => navigate("/dashboard")}>Back to Dashboard</Button>
-          <h1 className="text-2xl font-bold text-[#3A6F6F]">Organization Chart</h1>
+          <ShinyText text="Organization Chart" speed={3} className="text-2xl font-bold" />
         </div>
         <div className="flex flex-col md:flex-row gap-4 items-center mb-4">
           <div className="flex w-full items-center gap-4 p-4 bg-card rounded-xl border border-border shadow-elevation-medium">

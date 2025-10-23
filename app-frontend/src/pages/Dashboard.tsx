@@ -8,6 +8,7 @@ import { Button } from "../components/ui/Button";
 import { dashboardService, DashboardStats } from "../services/dashboardService";
 import { useToast } from "../context/ToastContext";
 import { Users,UserPlus,Settings,LogOut,Building2,GitBranch,Shield,Eye,TrendingUp,Calendar,Award} from "lucide-react";
+import ShinyText from '../components/ui/ShinyText';
 
 
 export const Dashboard: React.FC = () => {
@@ -53,9 +54,7 @@ export const Dashboard: React.FC = () => {
                 alt="Employee Hierarchy Logo"
                 className="h-10 w-auto"
               />
-              <h1 className="text-xl font-semibold text-[#3A6F6F]">
-                Employee Hierarchy
-              </h1>
+              <ShinyText text="Employee Hierarchy" speed={3} className="text-2xl font-bold" />
             </div>
 
             <div className="flex items-center gap-4">
@@ -87,7 +86,7 @@ export const Dashboard: React.FC = () => {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-white mb-2">
-            Welcome back, {user.name.split(" ")[0]}!
+            <ShinyText text={`Welcome back, ${user.name.split(" ")[0]}!`} speed={3} className="text-2xl font-bold" />
           </h2>
           <p className="text-gray-300">
             {isAdmin

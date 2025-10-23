@@ -549,6 +549,12 @@ export class EmployeeController {
       if (employeeRank <= currentUserRank) {
         return res.status(403).json({ error: `You do not have permission to delete a user with role ${employee.role}` });
       }
+
+      // Reassign subordinates to the deleted manager's manager
+      await prisma.employee.updateMany({
+        where: { managerId: employee.id },
+        data: { managerId: employee.managerId ?? null },
+      });
       await prisma.employee.delete({ where: { id: Number(id) } });
       res.status(204).end();
     } catch (error) {
