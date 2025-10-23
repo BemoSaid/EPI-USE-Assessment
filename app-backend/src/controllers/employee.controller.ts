@@ -591,6 +591,9 @@ export class EmployeeController {
       };
 
       const hierarchy = await buildHierarchy();
+      if (!hierarchy || hierarchy.length === 0) {
+        return res.status(200).json([]);
+      }
       res.json(hierarchy);
     } catch (error) {
       console.error("Error fetching hierarchy:", error);
