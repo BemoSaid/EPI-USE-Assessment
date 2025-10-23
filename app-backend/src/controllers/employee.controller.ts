@@ -526,6 +526,9 @@ export class EmployeeController {
       if (typeof data !== 'object' || data === null) {
         return res.status(400).json({ error: 'Invalid data for update' });
       }
+      if ('role' in data) {
+        delete data.role;
+      }
       const updated = await prisma.employee.update({ where: { id: Number(id) }, data });
       res.json(updated);
     } catch (error) {
@@ -550,7 +553,6 @@ export class EmployeeController {
         return res.status(403).json({ error: `You do not have permission to delete a user with role ${employee.role}` });
       }
 
-      // Reassign subordinates to the deleted manager's manager
       await prisma.employee.updateMany({
         where: { managerId: employee.id },
         data: { managerId: employee.managerId ?? null },
