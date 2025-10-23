@@ -292,10 +292,12 @@ export class EmployeeController {
       if (
         !employeeData.name ||
         !employeeData.surname ||
-        !employeeData.employeeNumber
+        !employeeData.employeeNumber ||
+        !employeeData.email ||
+        !employeeData.phoneNumber
       ) {
         return res.status(400).json({
-          error: "Name, surname, and employee number are required",
+          error: "Name, surname, employee number, email, and phone number are required",
         });
       }
 
@@ -843,8 +845,8 @@ export class EmployeeController {
         .pipe(csvParser());
       for await (const row of stream) {
         try {
-          const { name, surname, employeeNumber, email, role, department, managerEmail, birthDate, salary } = row;
-          if (!name || !surname || !employeeNumber || !email || !role || !birthDate || !salary) {
+          const { name, surname, employeeNumber, email, phoneNumber, role, department, managerEmail, birthDate, salary } = row;
+          if (!name || !surname || !employeeNumber || !email || !phoneNumber || !role || !birthDate || !salary) {
             summary.errors.push(`Missing required fields for employeeNumber: ${employeeNumber || 'unknown'}`);
             continue;
           }
@@ -887,7 +889,8 @@ export class EmployeeController {
                 managerId: managerId ?? null,
                 birthDate: new Date(birthDate),
                 salary: Number(salary),
-                userId: userId ?? existing.userId ?? null
+                userId: userId ?? existing.userId ?? null,
+                phoneNumber
               },
             });
             summary.updated++;
@@ -903,7 +906,8 @@ export class EmployeeController {
                 managerId: managerId ?? null,
                 birthDate: new Date(birthDate),
                 salary: Number(salary),
-                userId: userId ?? null
+                userId: userId ?? null,
+                phoneNumber
               },
             });
             summary.created++;
