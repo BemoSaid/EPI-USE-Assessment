@@ -15,8 +15,8 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['your-frontend-domain.com'] 
-    : ['http://localhost:3000', 'http://localhost:3001'],
+    ? ['https://main.d1vhlzr2b5j2uj.amplifyapp.com'] 
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
   credentials: true,
 }));
 app.use(morgan('combined'));
