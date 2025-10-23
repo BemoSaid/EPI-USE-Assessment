@@ -125,4 +125,13 @@ export const employeeService = {
     });
     return response.data;
   },
+
+  async getHierarchy(): Promise<any[]> {
+    const response = await api.get('/api/employees/hierarchy');
+    return response.data;
+  },
+  async getCurrentUserEmployee(): Promise<{ id: number; name: string; surname: string; role: string; department: string | null; email: string | null; phoneNumber: string | null; profileUrl: string | null; managerId: number | null; employeeNumber: string; }> {
+    const response = await api.get('/api/employees/me');
+    return response.data;
+  },
 };

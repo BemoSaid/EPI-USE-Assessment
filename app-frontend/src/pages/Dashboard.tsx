@@ -142,7 +142,7 @@ export const Dashboard: React.FC = () => {
                 <p className="text-sm text-[#5F9EA0] mb-3">
                   View the complete organizational hierarchy structure
                 </p>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={() => navigate("/organization-chart")}> 
                   View Hierarchy
                 </Button>
               </div>

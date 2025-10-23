@@ -7,6 +7,8 @@ import { Card } from '../components/ui/Card';
 import { useToast } from '../context/ToastContext';
 import { EMPLOYEE_ROLES } from '../utils/constants';
 import { employeeService, CreateEmployeeRequest } from '../services/employeeService';
+import { useAuth } from '../hooks/useAuth';
+import { userService } from '../services/userService';
 
 interface CreateEmployeeData {
   employeeNumber: string;
@@ -18,19 +20,25 @@ interface CreateEmployeeData {
   email: string;
   phoneNumber: string;
   department: string;
+  managerId?: string;
 }
 
 export const CreateEmployee: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { user, isAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState<any>(null);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [isLoadingRoles, setIsLoadingRoles] = useState(true);
+  const [availableManagers, setAvailableManagers] = useState<any[]>([]);
+  const [managerFieldVisible, setManagerFieldVisible] = useState(true);
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<number | null>(null);
+  const [currentEmployee, setCurrentEmployee] = useState<any>(null);
   
   const [formData, setFormData] = useState<CreateEmployeeData>({
-    employeeNumber: '',
+    employeeNumber: '', // will be set by backend
     name: '',
     surname: '',
     birthDate: '',
@@ -69,6 +77,81 @@ export const CreateEmployee: React.FC = () => {
     fetchAvailableRoles();
   }, []);
 
+  useEffect(() => {
+    // Fetch available managers only if admin
+    if (isAdmin) {
+      userService.getAvailableEmployees().then(setAvailableManagers);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    // Fetch current user's employee record for non-admins
+    if (!isAdmin) {
+      employeeService.getCurrentUserEmployee().then((emp: any) => {
+        if (!emp || !emp.id) {
+          showToast('Your user account is not linked to an employee record. Please contact an admin.', 'error');
+          setCurrentEmployeeId(null);
+          setCurrentEmployee(null);
+          setFormData(prev => ({ ...prev, managerId: undefined }));
+        } else {
+          setCurrentEmployeeId(emp.id);
+          setCurrentEmployee(emp);
+          setFormData(prev => ({ ...prev, managerId: String(emp.id) }));
+        }
+      }).catch(() => {
+        showToast('Could not fetch your employee record. Please contact an admin.', 'error');
+        setCurrentEmployeeId(null);
+        setCurrentEmployee(null);
+        setFormData(prev => ({ ...prev, managerId: undefined }));
+      });
+    }
+  }, [isAdmin, showToast]);
+
+  // DEBUG: Log the current employee record for troubleshooting
+  useEffect(() => {
+    if (!isAdmin) {
+      console.log('Fetched current employee for manager:', currentEmployee);
+    }
+  }, [currentEmployee, isAdmin]);
+
+  // DEBUG: Log available managers for troubleshooting
+  useEffect(() => {
+    if (isAdmin) {
+      console.log('Available managers:', availableManagers);
+    }
+  }, [availableManagers, isAdmin]);
+
+  useEffect(() => {
+    // Hide manager field for CEO, else show
+    if (formData.role === 'CEO') {
+      setManagerFieldVisible(false);
+      setFormData(prev => ({ ...prev, managerId: undefined }));
+    } else {
+      setManagerFieldVisible(true);
+      // For non-admins, set managerId to current user's employeeId
+      if (!isAdmin && currentEmployeeId) {
+        setFormData(prev => ({ ...prev, managerId: String(currentEmployeeId) }));
+      }
+    }
+  }, [formData.role, isAdmin, currentEmployeeId]);
+
+  useEffect(() => {
+    // For admins: auto-select first manager if not CEO and not set
+    if (
+      isAdmin &&
+      managerFieldVisible &&
+      formData.role !== 'CEO' &&
+      availableManagers.length > 0 &&
+      !formData.managerId
+    ) {
+      setFormData(prev => ({ ...prev, managerId: String(availableManagers[0].id) }));
+    }
+    // For CEO, clear managerId
+    if (isAdmin && formData.role === 'CEO' && formData.managerId) {
+      setFormData(prev => ({ ...prev, managerId: '' }));
+    }
+  }, [isAdmin, managerFieldVisible, formData.role, availableManagers, formData.managerId]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -87,10 +170,7 @@ export const CreateEmployee: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.employeeNumber.trim()) {
-      newErrors.employeeNumber = 'Employee number is required';
-    }
-
+    // Remove employeeNumber validation (now read-only)
     if (!formData.name.trim()) {
       newErrors.name = 'First name is required';
     }
@@ -111,6 +191,10 @@ export const CreateEmployee: React.FC = () => {
       newErrors.email = 'Valid email is required';
     }
 
+    // For admins, require manager if not CEO
+    if (isAdmin && formData.role !== 'CEO' && !formData.managerId) {
+      newErrors.managerId = 'Manager is required for this role';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -132,10 +216,16 @@ export const CreateEmployee: React.FC = () => {
         email: formData.email || undefined,
         phoneNumber: formData.phoneNumber || undefined,
         department: formData.department || undefined,
+        managerId: formData.managerId ? Number(formData.managerId) : undefined,
       };
 
       const response = await employeeService.createEmployee(employeeData);
       
+      // Set employeeNumber in formData if returned
+      if (response.employeeNumber) {
+        setFormData(prev => ({ ...prev, employeeNumber: response.employeeNumber }));
+      }
+
       showToast(
         `Employee "${response.name} ${response.surname}" created successfully!`,
         'success'
@@ -289,10 +379,10 @@ export const CreateEmployee: React.FC = () => {
                 name="employeeNumber"
                 type="text"
                 value={formData.employeeNumber}
-                onChange={handleChange}
+                onChange={() => {}}
                 error={errors.employeeNumber}
-                disabled={isSubmitting}
-                placeholder="EMP001"
+                disabled
+                placeholder="Auto-generated"
                 required
               />
 
@@ -381,7 +471,7 @@ export const CreateEmployee: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Email (Optional)"
+                label="Email"
                 name="email"
                 type="email"
                 value={formData.email}
@@ -411,6 +501,53 @@ export const CreateEmployee: React.FC = () => {
               disabled={isSubmitting}
               placeholder="Engineering, HR, Sales, etc."
             />
+
+            {/* Manager field logic */}
+            {managerFieldVisible && (
+              isAdmin ? (
+                <div>
+                  <label className="block text-sm font-medium text-[#3A6F6F] mb-1">Manager</label>
+                  <select
+                    name="managerId"
+                    value={formData.managerId || ''}
+                    onChange={handleChange}
+                    className="block w-full px-4 py-3 border-2 border-[#B2D8D8] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5F9EA0] focus:border-[#5F9EA0] bg-white text-[#3A6F6F] transition-all duration-200"
+                    disabled={isSubmitting || (formData.role === 'CEO')}
+                  >
+                    {formData.role === 'CEO' ? (
+                      <option value="">No Manager</option>
+                    ) : (
+                      availableManagers.length > 0 ? (
+                        availableManagers.map((mgr) => (
+                          <option key={mgr.id} value={mgr.id}>
+                            {mgr.name} {mgr.surname} ({mgr.role})
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No managers available</option>
+                      )
+                    )}
+                  </select>
+                  {errors.managerId && (
+                    <p className="text-sm text-red-600 mt-1">{errors.managerId}</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <Input
+                    label="Manager"
+                    name="managerId"
+                    type="text"
+                    value={currentEmployee ? `${currentEmployee.name} ${currentEmployee.surname}` : 'Loading...'}
+                    disabled
+                    readOnly
+                  />
+                  {!currentEmployee && (
+                    <p className="text-sm text-red-600 mt-1">No manager record found for your user. Please contact an admin.</p>
+                  )}
+                </>
+              )
+            )}
 
             <div className="flex gap-3 pt-4">
               <Button

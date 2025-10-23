@@ -37,8 +37,14 @@ export class EmployeeController {
   }
 
   private generateDefaultPassword(employeeNumber: string, surname: string): string {
-    const surnamePrefix = surname.substring(0, 3).toLowerCase();
-    return `${surnamePrefix}${employeeNumber}!`;
+    // Ensure at least 3 chars from surname, pad with 'x' if needed
+    let surnamePrefix = surname.substring(0, 3).toLowerCase();
+    if (surnamePrefix.length < 3) surnamePrefix = surnamePrefix.padEnd(3, 'x');
+    // Ensure employeeNumber is at least 3 chars
+    let empNumPart = employeeNumber.replace(/[^a-zA-Z0-9]/g, '');
+    if (empNumPart.length < 3) empNumPart = empNumPart.padEnd(3, '0');
+    // Add a special char and a digit for complexity
+    return `${surnamePrefix}${empNumPart}!9`;
   }
 
   private async canCreateEmployeeRole(creatorUserId: string, targetRole: Role): Promise<boolean> {
@@ -83,6 +89,7 @@ export class EmployeeController {
     this.promoteEmployee = this.promoteEmployee.bind(this);
     this.exportEmployeesCsv = this.exportEmployeesCsv.bind(this);
     this.importEmployeesCsv = this.importEmployeesCsv.bind(this);
+    this.getEmployeeForCurrentUser = this.getEmployeeForCurrentUser.bind(this);
   }
   // Gravatar URLs
   // private getGravatarUrl(email: string, size: number = 200): string {
@@ -292,12 +299,11 @@ export class EmployeeController {
       if (
         !employeeData.name ||
         !employeeData.surname ||
-        !employeeData.employeeNumber ||
         !employeeData.email ||
         !employeeData.phoneNumber
       ) {
         return res.status(400).json({
-          error: "Name, surname, employee number, email, and phone number are required",
+          error: "Name, surname, email, and phone number are required",
         });
       }
 
@@ -322,6 +328,14 @@ export class EmployeeController {
       // Auto-handle CEO role - CEOs cannot have managers
       if (this.shouldHaveNoManager(employeeData.role)) {
         delete employeeData.managerId;
+      } else if (req.user?.role !== 'ADMIN') {
+        // For non-admins, always set managerId to current user's employee id
+        const currentEmployee = await prisma.employee.findFirst({ where: { userId: req.user!.id }, select: { id: true } });
+        if (currentEmployee) {
+          employeeData.managerId = currentEmployee.id;
+        } else {
+          return res.status(400).json({ error: "Current user does not have an associated employee record" });
+        }
       }
 
       // Check if employee number already exists
@@ -398,10 +412,18 @@ export class EmployeeController {
         });
       }
 
+      // Auto-generate employeeNumber if not provided
+      let employeeNumber = employeeData.employeeNumber;
+      if (!employeeNumber) {
+        const lastEmployee = await prisma.employee.findFirst({ orderBy: { id: 'desc' }, select: { id: true } });
+        employeeNumber = `E${(lastEmployee?.id ?? 0) + 1}`;
+      }
+
       // Create employee and link to user if user was created
       const employee = await prisma.employee.create({
         data: {
           ...employeeData,
+          employeeNumber, // Use generated or provided employeeNumber
           birthDate: new Date(employeeData.birthDate),
           userId: user?.id || null,
         },
@@ -758,6 +780,16 @@ export class EmployeeController {
 
   async getAvailableEmployees(req: AuthenticatedRequest, res: Response) {
     try {
+      // Get the current user's employee record
+      const userId = req.user?.id;
+      let creator = null;
+      if (userId) {
+        creator = await prisma.employee.findFirst({
+          where: { userId },
+          select: { id: true, role: true }
+        });
+      }
+
       const allEmployees = await prisma.employee.findMany({
         select: {
           id: true,
@@ -773,21 +805,18 @@ export class EmployeeController {
         ],
       });
 
-      const linkedEmployeeIds = new Set();
-      const employeesWithUsers = await prisma.employee.findMany({
-        where: {
-          userId: {
-            not: null
-          }
-        },
-        select: {
-          id: true
-        }
-      });
+      let availableEmployees = allEmployees;
+      if (creator) {
+        // Only allow managers with a higher rank than the creator
+        const roleHierarchy = this.roleHierarchy;
+        availableEmployees = allEmployees.filter(emp => roleHierarchy[emp.role] < roleHierarchy[creator.role]);
+      }
 
-      employeesWithUsers.forEach(emp => linkedEmployeeIds.add(emp.id));
-      
-      const availableEmployees = allEmployees.filter(emp => !linkedEmployeeIds.has(emp.id));
+      // Always include the creator as a possible manager
+      if (creator && !availableEmployees.some(emp => emp.id === creator.id)) {
+        const self = allEmployees.find(emp => emp.id === creator.id);
+        if (self) availableEmployees.unshift(self);
+      }
 
       res.json(availableEmployees);
     } catch (error) {
@@ -895,11 +924,17 @@ export class EmployeeController {
             });
             summary.updated++;
           } else {
+            // Auto-generate employeeNumber if not provided
+            let empNumber = employeeNumber;
+            if (!empNumber) {
+              const lastEmployee = await prisma.employee.findFirst({ orderBy: { id: 'desc' }, select: { id: true } });
+              empNumber = `E${(lastEmployee?.id ?? 0) + 1}`;
+            }
             await prisma.employee.create({
               data: {
                 name,
                 surname,
-                employeeNumber,
+                employeeNumber: empNumber, // Use generated employeeNumber
                 email,
                 role,
                 department,
@@ -913,14 +948,46 @@ export class EmployeeController {
             summary.created++;
           }
         } catch (err: any) {
-          summary.errors.push(`Row error: ${err.message}`);
+          if (err.code === 'P2002' && err.meta?.target?.includes('email')) {
+            summary.errors.push(`Duplicate email: ${row.email || 'unknown'} (row skipped)`);
+          } else {
+            summary.errors.push('Row error: Invalid or duplicate data. Please check your CSV.');
+          }
         }
       }
       fs.unlinkSync(filePath); 
       res.json(summary);
     } catch (error) {
       console.error('CSV import error:', error);
-      res.status(500).json({ error: 'Failed to import employees from CSV' });
+      res.status(500).json({ error: 'Failed to import employees from CSV. Please check your file for duplicate emails or invalid data.' });
+    }
+  }
+
+  // Get current user's employee record
+  async getEmployeeForCurrentUser(req: AuthenticatedRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      const employee = await prisma.employee.findFirst({ where: { userId }, select: {
+        id: true,
+        name: true,
+        surname: true,
+        employeeNumber: true,
+        role: true,
+        department: true,
+        email: true,
+        phoneNumber: true,
+        profileUrl: true,
+        managerId: true,
+      }});
+      if (!employee) {
+        return res.status(404).json({ error: 'Employee record not found for current user' });
+      }
+      return res.json(employee);
+    } catch (error) {
+      return res.status(500).json({ error: 'Failed to fetch employee record' });
     }
   }
 }

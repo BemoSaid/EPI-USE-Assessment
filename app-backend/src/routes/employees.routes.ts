@@ -24,5 +24,13 @@ router.put('/:id', employeeController.updateEmployee);
 router.delete('/:id', requireAdmin, employeeController.deleteEmployee);
 router.get('/export', employeeController.exportEmployeesCsv);
 router.post('/import', requireAdmin, upload.single('file'), employeeController.importEmployeesCsv);
+router.get('/me', async (req, res) => {
+  try {
+    const employee = await employeeController.getEmployeeForCurrentUser(req, res);
+    if (employee !== undefined) return;
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch current user employee record' });
+  }
+});
 
 export default router;

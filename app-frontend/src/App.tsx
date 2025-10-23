@@ -11,6 +11,7 @@ import { CreateUser } from './pages/CreateUser';
 import { CreateEmployee } from './pages/CreateEmployee';
 import { AccountSettings } from './pages/AccountSettings';
 import { EmployeeDirectory } from './pages/EmployeeDirectory';
+import { OrganizationChart } from './pages/OrganizationChart';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -68,6 +69,7 @@ function App() {
               <Route path="/create-employee" element={<ProtectedRoute><CreateEmployee /></ProtectedRoute>} />
               <Route path="/account-settings" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
               <Route path="/employees" element={<ProtectedRoute><EmployeeDirectory /></ProtectedRoute>} />
+              <Route path="/organization-chart" element={<ProtectedRoute><OrganizationChart /></ProtectedRoute>} />
               
               {/* Default redirects */}
               <Route path="/employee-directory" element={<Navigate to="/employees" replace />} />
