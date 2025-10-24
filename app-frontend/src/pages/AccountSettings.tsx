@@ -11,6 +11,7 @@ import { userService } from '../services/userService';
 import { gravatarService, GravatarProfile } from '../services/gravatarService';
 import { useAuthContext } from '../context/AuthContext';
 import { authAPI } from '../services/api';
+import ShinyText from '../components/ui/ShinyText';
 
 interface PasswordChangeData {
   currentPassword: string;
@@ -309,11 +310,8 @@ export const AccountSettings: React.FC = () => {
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
-          </Button>
-          
-          <h1 className="text-3xl font-bold text-[#3A6F6F] mb-2">
-            Account Settings
-          </h1>
+          </Button><br></br>
+          <ShinyText text="Account Settings" speed={3} className="text-3xl font-bold mb-2" />
           <p className="text-[#5F9EA0]">
             Manage your account information and security settings
           </p>

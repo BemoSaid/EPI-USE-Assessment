@@ -4,7 +4,6 @@ import {
   CreateEmployeeDto,
   UpdateEmployeeDto,
 } from "../types/index.js";
-import { Role } from "@prisma/client";
 import prisma from "../config/database.js";
 import crypto from "crypto";
 import fetch from "node-fetch";
@@ -16,6 +15,18 @@ import fs from 'fs';
 import path from 'path';
 
 const upload = multer({ dest: 'uploads/' });
+
+// Define Role type matching your hierarchy
+export type Role =
+  | "CEO"
+  | "CTO"
+  | "DIRECTOR"
+  | "SENIOR_MANAGER"
+  | "MANAGER"
+  | "TEAM_LEAD"
+  | "SENIOR_EMPLOYEE"
+  | "JUNIOR_EMPLOYEE"
+  | "INTERN";
 
 export class EmployeeController {
   // Role hierarchy - lower numbers = higher authority
@@ -57,15 +68,15 @@ export class EmployeeController {
       return targetRole !== "CEO";
     }
 
-    const creatorRank = this.roleHierarchy[creatorEmployee.role];
-    const targetRank = this.roleHierarchy[targetRole];
+    const creatorRank = this.roleHierarchy[creatorEmployee.role as keyof typeof this.roleHierarchy];
+    const targetRank = this.roleHierarchy[targetRole as keyof typeof this.roleHierarchy];
 
     return targetRank > creatorRank;
   }
 
   private canBeManager(managerRole: Role, subordinateRole: Role): boolean {
-    const managerRank = this.roleHierarchy[managerRole];
-    const subordinateRank = this.roleHierarchy[subordinateRole];
+    const managerRank = this.roleHierarchy[managerRole as keyof typeof this.roleHierarchy];
+    const subordinateRank = this.roleHierarchy[subordinateRole as keyof typeof this.roleHierarchy];
 
     return managerRank < subordinateRank;
   }
@@ -212,7 +223,7 @@ export class EmployeeController {
 
       // Gravatar URLs
       const employeesWithGravatar = await Promise.all(
-        employees.map(async (emp) => {
+        employees.map(async (emp: any) => {
           const gravatarUrl = await this.getGravatarUrl(emp.email || "");
           return {
             ...emp,
@@ -487,7 +498,7 @@ export class EmployeeController {
       const userId = req.user?.id;
       const currentUser = await prisma.employee.findFirst({ where: { userId }, select: { role: true } });
       if (!currentUser) return res.status(403).json({ error: 'No permission to promote (not an employee)' });
-      const currentUserRank = this.roleHierarchy[currentUser.role];
+      const currentUserRank = this.roleHierarchy[currentUser.role as keyof typeof this.roleHierarchy];
       // Promotion logic
       const roles: Role[] = [
         'INTERN', 'JUNIOR_EMPLOYEE', 'SENIOR_EMPLOYEE', 'TEAM_LEAD', 'MANAGER', 'SENIOR_MANAGER', 'DIRECTOR', 'CTO', 'CEO'
@@ -497,7 +508,7 @@ export class EmployeeController {
         return res.status(400).json({ error: 'Cannot promote further' });
       }
       const newRole = roles[currentIndex + 1];
-      const newRoleRank = this.roleHierarchy[newRole as Role];
+      const newRoleRank = this.roleHierarchy[newRole as keyof typeof this.roleHierarchy];
       // Debug logging for promotion logic
       console.log('Promote attempt:', {
         currentUserRole: currentUser.role,
@@ -546,9 +557,8 @@ export class EmployeeController {
       const userId = req.user?.id;
       const currentUser = await prisma.employee.findFirst({ where: { userId }, select: { role: true } });
       if (!currentUser) return res.status(403).json({ error: 'No permission to delete (not an employee)' });
-      const currentUserRank = this.roleHierarchy[currentUser.role];
-      const employeeRank = this.roleHierarchy[employee.role];
-      // Only allow delete if employee's rank is greater than current user's rank (lower authority)
+      const currentUserRank = this.roleHierarchy[currentUser.role as keyof typeof this.roleHierarchy];
+      const employeeRank = this.roleHierarchy[employee.role as keyof typeof this.roleHierarchy];
       if (employeeRank <= currentUserRank) {
         return res.status(403).json({ error: `You do not have permission to delete a user with role ${employee.role}` });
       }
@@ -619,7 +629,7 @@ export class EmployeeController {
       });
 
       const departmentList = departments
-        .map((d) => d.department)
+        .map((d: any) => d.department)
         .filter(Boolean);
 
       res.json(departmentList);
@@ -737,14 +747,14 @@ export class EmployeeController {
       const stats = {
         totalEmployees,
         departmentsCount,
-        topManagers: managersWithCounts.map(manager => ({
+        topManagers: managersWithCounts.map((manager: any) => ({
           id: manager.id,
           name: `${manager.name} ${manager.surname}`,
           role: manager.role,
           department: manager.department,
           subordinatesCount: manager._count.subordinates,
         })),
-        latestHires: latestHires.map(employee => ({
+        latestHires: latestHires.map((employee: any) => ({
           id: employee.id,
           name: `${employee.name} ${employee.surname}`,
           role: employee.role,
@@ -774,13 +784,13 @@ export class EmployeeController {
         availableRoles = Object.keys(this.roleHierarchy)
           .filter(role => role !== "CEO") as Role[];
       } else {
-        const creatorRank = this.roleHierarchy[creatorEmployee.role];
+        const creatorRank = this.roleHierarchy[creatorEmployee.role as keyof typeof this.roleHierarchy];
         availableRoles = Object.entries(this.roleHierarchy)
           .filter(([_, rank]) => rank > creatorRank)
           .map(([role, _]) => role) as Role[];
       }
 
-      availableRoles.sort((a, b) => this.roleHierarchy[a as Role] - this.roleHierarchy[b as Role]);
+      availableRoles.sort((a, b) => this.roleHierarchy[a as keyof typeof this.roleHierarchy] - this.roleHierarchy[b as keyof typeof this.roleHierarchy]);
 
       res.json(availableRoles);
     } catch (error) {
@@ -820,12 +830,12 @@ export class EmployeeController {
       if (creator) {
         // Only allow managers with a higher rank than the creator
         const roleHierarchy = this.roleHierarchy;
-        availableEmployees = allEmployees.filter(emp => roleHierarchy[emp.role] < roleHierarchy[creator.role]);
+        availableEmployees = allEmployees.filter((emp: any) => roleHierarchy[emp.role as keyof typeof roleHierarchy] < roleHierarchy[creator.role as keyof typeof roleHierarchy]);
       }
 
       // Always include the creator as a possible manager
-      if (creator && !availableEmployees.some(emp => emp.id === creator.id)) {
-        const self = allEmployees.find(emp => emp.id === creator.id);
+      if (creator && !availableEmployees.some((emp: any) => emp.id === creator.id)) {
+        const self = allEmployees.find((emp: any) => emp.id === creator.id);
         if (self) availableEmployees.unshift(self);
       }
 
@@ -884,11 +894,11 @@ export class EmployeeController {
           manager: { select: { email: true } },
         },
       });
-      const data = employees.map(e => ({
+      const data = employees.map((e: any) => ({
         ...e,
         managerEmail: e.manager && e.manager.email ? e.manager.email : '',
       }));
-      data.forEach(d => { delete (d as any).manager; });
+      data.forEach((d: any) => { delete (d as any).manager; });
       const fields = ['id', 'name', 'surname', 'employeeNumber', 'email', 'role', 'department', 'managerEmail'];
       const json2csv = new Json2CsvParser({ fields });
       const csv = json2csv.parse(data);

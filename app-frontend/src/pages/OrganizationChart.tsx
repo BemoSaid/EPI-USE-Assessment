@@ -83,7 +83,8 @@ export const OrganizationChart: React.FC = () => {
 
   if (loading) return <div className="text-center text-slate-400 py-10">Loading chart...</div>;
   if (error) return <div className="text-center text-red-400 py-10">{error}</div>;
-  if (!filteredTree) return <div className="text-center text-slate-400 py-10">No results found.</div>;
+
+  const isNoResults = !filteredTree || (filteredTree && (!filteredTree.name || (filteredTree.children && filteredTree.children.length === 0 && !filteredTree.name)));
 
   return (
     <div className="min-h-screen py-10 px-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
@@ -107,19 +108,22 @@ export const OrganizationChart: React.FC = () => {
                 orientation={orientation}
                 onOrientationChange={setOrientation}
                 onReset={handleReset}
-                totalNodes={countNodes(filteredTree)}
+                totalNodes={filteredTree ? countNodes(filteredTree) : 0}
               />
             </div>
           </div>
         </div>
-        <div className="w-full h-[80vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-xl shadow-lg mt-4">
-          <OrgChart2D
-            data={filteredTree}
-            orientation={orientation}
-            onNodeClick={(node) => {
-              // Optionally show a modal or details here
-            }}
-          />
+        <div className="w-full h-[80vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-xl shadow-lg mt-4 flex flex-col items-center justify-center">
+          {isNoResults ? (
+            <div className="text-slate-400 text-lg">No results found.</div>
+          ) : (
+            <OrgChart2D
+              data={filteredTree}
+              orientation={orientation}
+              onNodeClick={(node) => {
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
