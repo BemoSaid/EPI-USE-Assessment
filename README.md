@@ -55,8 +55,6 @@ A modern, full-stack organizational management system for managing employees, ro
    cd app-frontend && npm install
    cd ../app-backend && npm install
    ```
-3. **Set up environment variables:**
-   - See `.env.example` in each folder for required variables.
 4. **Run locally:**
    - Frontend: `npm run dev` (in `app-frontend`)
    - Backend: `npm run dev` (in `app-backend`)
@@ -64,8 +62,9 @@ A modern, full-stack organizational management system for managing employees, ro
 ---
 
 ## Deployment
-- **Frontend:** Deploy on AWS Amplify or Vercel. Set `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+- **Frontend:** Deploy on AWS Amplify. Set `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 - **Backend:** Deploy on Railway. Set `DATABASE_URL`, `JWT_SECRET`, etc.
+- **Database** Deploy on Supabase. Set `DATABASE_URL`.
 - **CORS:** Ensure backend allows requests from your frontend domain.
 
 ---
