@@ -6,10 +6,12 @@
   <tr>
     <td align="center"><b>User Manual</b></td>
     <td align="center"><b>Technical Document</b></td>
+    <td align="center"><b>Demo Video</b></td>
   </tr>
   <tr>
     <td align="center"><a href="docs/UserManual.pdf">User Manual PDF</a></td>
     <td align="center"><a href="docs/TechnicalDocument.pdf">Technical Document PDF</a></td>
+    <td align="center"><a href="https://drive.google.com/file/d/1_Rs0l2mJYPyLqaLW9Zm-OXSALSM3EWB_/view?usp=drive_link" target="_blank">Demo Video (Google Drive)</a></td>
   </tr>
 </table>
 
@@ -72,4 +74,9 @@ A modern, full-stack organizational management system for managing employees, ro
 ## Documentation
 - 📖 [User Manual (Markdown)](docs/USER_MANUAL.md)
 - 📬 [API Postman Guide (Markdown)](docs/API_Postman_Guide.md)
+
+## **Please feel free to contact me on:** 📞
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/ibrahim-said-908156356)
+[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:bemosaid3@gmail.com)
+
 
