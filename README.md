@@ -1,17 +1,15 @@
 # Employee Hierarchy Management System
 
-![alt text](EH.png)
+![alt text](app-frontend/public/EH.png)
 
 <table>
   <tr>
     <td align="center"><b>User Manual</b></td>
-    <td align="center"><b>API Guide</b></td>
     <td align="center"><b>Technical Document</b></td>
   </tr>
   <tr>
-    <td align="center">[User Manual PDF](docs/USER_MANUAL.pdf)</td>
-    <td align="center">[API Guide PDF](docs/API_Postman_Guide.pdf)</td>
-    <td align="center">[Technical Document PDF](Technical Document.pdf)</td>
+    <td align="center"><a href="docs/UserManual.pdf">User Manual PDF</a></td>
+    <td align="center"><a href="docs/TechnicalDocument.pdf">Technical Document PDF</a></td>
   </tr>
 </table>
 
