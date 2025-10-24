@@ -29,7 +29,7 @@
 ---
 
 ## Overview
-A modern, full-stack organizational management system for managing employees, roles, and company structure. Features a beautiful UI, robust backend, and seamless deployment.
+A modern, full-stack organizational management system for managing employees, roles, and company structure. Features a modern UI, robust backend, and seamless deployment.
 
 ---
 
